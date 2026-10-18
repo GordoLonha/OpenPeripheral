@@ -82,6 +82,15 @@ export default function App() {
     };
   }, []);
 
+  // Like iCUE: a device's page closes when the device goes away. A short grace
+  // period keeps it open while a device re-connects (e.g. after a polling change).
+  const pageDevice = page === 'keyboard' ? status?.keyboard : page === 'headset' ? status?.headset : page === 'mouse' ? status?.mouse : true;
+  useEffect(() => {
+    if (pageDevice || !status) return;
+    const t = window.setTimeout(() => setPage('home'), 3000);
+    return () => window.clearTimeout(t);
+  }, [pageDevice, status]);
+
   const update = (patch: Partial<Lighting>) => {
     setLighting((cur) => {
       if (!cur) return cur;
