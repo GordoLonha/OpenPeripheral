@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import type { Action, Bindings } from './api';
+import { DEFAULT_MACRO_OPTIONS, type Action, type Bindings } from './api';
 import { Icon, type IconName } from './icons';
 import { KEYS } from './layout';
+import { MacroEditor } from './MacroEditor';
 
 type Kind = Action['kind'];
-type MacroStep = { key: string; down: boolean; delay_ms: number };
 
-const GROUPS: { title: string; items: { id: Kind; name: string; icon: IconName }[] }[] = [
+export const GROUPS: { title: string; items: { id: Kind; name: string; icon: IconName }[] }[] = [
   {
     title: 'Remapear',
     items: [
@@ -28,7 +28,7 @@ const GROUPS: { title: string; items: { id: Kind; name: string; icon: IconName }
     ],
   },
 ];
-const KIND_INFO = Object.fromEntries(GROUPS.flatMap((g) => g.items).map((i) => [i.id, i]));
+export const KIND_INFO = Object.fromEntries(GROUPS.flatMap((g) => g.items).map((i) => [i.id, i]));
 
 // Names understood by app/src-tauri/src/remap.rs::key_from_name.
 const TARGET_ROWS: { id: string; name: string; w?: number }[][] = [
@@ -92,19 +92,19 @@ export function describe(a: Action): string {
     case 'launch': return LAUNCH.find((l) => l.id === a.target)?.name ?? a.target;
     case 'media': return MEDIA.find((m) => m.id === a.action)?.name ?? a.action;
     case 'mouse': return MOUSE.find((m) => m.id === a.button)?.name ?? a.button;
-    case 'macro': return `Macro (${a.steps.filter((s) => s.down).length} teclas)`;
+    case 'macro': return `Macro (${a.steps.filter((s) => s.down).length} ${a.steps.filter((s) => s.down).length === 1 ? 'passo' : 'passos'})`;
     case 'profile': return a.target === 'next' ? 'Próximo perfil' : `Perfil ${profileNames[a.target] ?? a.target}`;
   }
 }
 
-const defaults: Record<Kind, Action> = {
+export const defaults: Record<Kind, Action> = {
   key: { kind: 'key', key: 'B' },
   shortcut: { kind: 'shortcut', keys: ['Control', 'C'] },
   mouse: { kind: 'mouse', button: 'left' },
   text: { kind: 'text', text: '' },
   media: { kind: 'media', action: 'playpause' },
   launch: { kind: 'launch', target: 'calc' },
-  macro: { kind: 'macro', steps: [] },
+  macro: { kind: 'macro', steps: [], options: DEFAULT_MACRO_OPTIONS },
   profile: { kind: 'profile', target: 'next' },
   disabled: { kind: 'disabled' },
 };
@@ -271,7 +271,7 @@ export function KeyActions({ bindings, onChange, pickedKey, onPickedKeyHandled, 
   );
 }
 
-function valid(a: Action): boolean {
+export function valid(a: Action): boolean {
   if (a.kind === 'text') return a.text.length > 0;
   if (a.kind === 'launch') return a.target.trim().length > 0 && a.target !== 'https://';
   if (a.kind === 'macro') return a.steps.length > 0;
@@ -279,7 +279,7 @@ function valid(a: Action): boolean {
   return true;
 }
 
-function Detail({ action, onChange, profiles }: { action: Action; onChange: (a: Action) => void; profiles: { id: string; name: string }[] }) {
+export function Detail({ action, onChange, profiles }: { action: Action; onChange: (a: Action) => void; profiles: { id: string; name: string }[] }) {
   switch (action.kind) {
     case 'profile':
       return (
@@ -362,7 +362,15 @@ function Detail({ action, onChange, profiles }: { action: Action; onChange: (a: 
       );
     }
     case 'macro':
-      return <MacroDetail steps={action.steps} onChange={(steps) => onChange({ kind: 'macro', steps })} />;
+      return (
+        <MacroEditor
+          steps={action.steps}
+          options={action.options ?? DEFAULT_MACRO_OPTIONS}
+          onChange={(steps, options) => onChange({ kind: 'macro', steps, options })}
+          keyName={targetName}
+          keyFromEvent={keyNameFromEvent}
+        />
+      );
     case 'disabled':
       return (
         <>
@@ -412,69 +420,3 @@ function ShortcutDetail({ keys, onChange }: { keys: string[]; onChange: (k: stri
   );
 }
 
-function MacroDetail({ steps, onChange }: { steps: MacroStep[]; onChange: (s: MacroStep[]) => void }) {
-  const [rec, setRec] = useState(false);
-  const [withDelays, setWithDelays] = useState(true);
-  const buf = useRef<MacroStep[]>([]);
-  const last = useRef(0);
-
-  useEffect(() => {
-    if (!rec) return;
-    buf.current = [];
-    last.current = performance.now();
-    const handler = (down: boolean) => (e: KeyboardEvent) => {
-      e.preventDefault();
-      if (e.repeat) return;
-      const key = keyNameFromEvent(e);
-      if (!key) return;
-      const now = performance.now();
-      buf.current.push({ key, down, delay_ms: buf.current.length ? Math.round(now - last.current) : 0 });
-      last.current = now;
-      onChange([...buf.current]);
-    };
-    const d = handler(true), u = handler(false);
-    window.addEventListener('keydown', d, true);
-    window.addEventListener('keyup', u, true);
-    return () => {
-      window.removeEventListener('keydown', d, true);
-      window.removeEventListener('keyup', u, true);
-    };
-  }, [rec]);
-
-  const shown = useMemo(() => (withDelays ? steps : steps.map((s) => ({ ...s, delay_ms: 0 }))), [steps, withDelays]);
-
-  return (
-    <>
-      <div className="detail-head">
-        <h3>Macro</h3>
-        <button className={'rec-btn' + (rec ? ' on' : '')} onClick={() => setRec(!rec)}>
-          <Icon name="record" size={14} /> {rec ? 'Parar' : 'Gravar'}
-        </button>
-      </div>
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={withDelays}
-          onChange={(e) => {
-            setWithDelays(e.target.checked);
-            if (!e.target.checked) onChange(steps.map((s) => ({ ...s, delay_ms: 0 })));
-          }}
-        />
-        Manter os intervalos gravados
-      </label>
-      <ol className="macro-steps">
-        {shown.length === 0 && <li className="muted">Clique em Gravar e digite neste app. Clique em Parar quando terminar.</li>}
-        {shown.map((s, i) => (
-          <li key={i}>
-            {s.delay_ms > 0 && <span className="delay">{s.delay_ms} ms</span>}
-            <span className={s.down ? 'down' : 'up'}>{s.down ? '↓' : '↑'}</span>
-            <kbd>{targetName(s.key)}</kbd>
-            <button className="icon-btn" aria-label="Remover passo" onClick={() => onChange(steps.filter((_, j) => j !== i))}>
-              <Icon name="close" size={12} />
-            </button>
-          </li>
-        ))}
-      </ol>
-    </>
-  );
-}

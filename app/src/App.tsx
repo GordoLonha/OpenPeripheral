@@ -286,7 +286,7 @@ export default function App() {
         ) : page === 'headset' ? (
           <HeadsetPage key={loadGen} status={status} />
         ) : page === 'mouse' ? (
-          <MousePage key={loadGen} status={status} />
+          <MousePage key={loadGen} status={status} profiles={profiles?.profiles ?? []} />
         ) : page === 'profiles' ? (
           profiles && <ProfilesPage data={profiles} />
         ) : (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, fromHex, toHex, type DpiStage, type Effect, type Lighting, type MouseOptions, type Status } from './api';
 import { ColorField, Slider, Switch } from './controls';
 import { POLLING, useAppSettings } from './settings';
+import { MouseButtons } from './MouseButtons';
 
 const DPI_MIN = 100;
 const DPI_MAX = 18000;
@@ -15,7 +16,7 @@ const ZONE_EFFECTS: { id: Effect; name: string; two?: boolean }[] = [
 ];
 
 /** M65 RGB Elite: DPI stages, sniper, sensor options and lighting per zone. */
-export function MousePage({ status }: { status: Status | null }) {
+export function MousePage({ status, profiles }: { status: Status | null; profiles: { id: string; name: string }[] }) {
   const [settings, patch] = useAppSettings();
   const [opts, setOpts] = useState<MouseOptions | null>(null);
   const timer = useRef<number | undefined>(undefined);
@@ -64,6 +65,8 @@ export function MousePage({ status }: { status: Status | null }) {
             <StageRow label="Sniper" stage={opts.sniper} hint="enquanto segura o botão vermelho" onChange={(n) => change({ ...opts, sniper: n })} />
           </div>
         </div>
+
+        <MouseButtons profiles={profiles} />
 
         <div className="panel setting">
           <div>

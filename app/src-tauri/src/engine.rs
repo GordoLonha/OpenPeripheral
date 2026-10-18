@@ -46,6 +46,8 @@ pub enum Cmd {
     /// DPI stage (0-based): restored on connect, selected now if connected.
     SetMouseStage(u8),
     SetMouse(MouseOptions),
+    /// Mouse button (bit, see m65::BUTTONS) -> action.
+    SetMouseBindings(HashMap<u8, Action>),
     SetKeyboard(KeyboardOptions),
     SetHeadset(HeadsetOptions),
     Shutdown(Sender<()>),
@@ -189,6 +191,8 @@ struct Devices {
     /// DPI stage to select on connect (kept in settings by the app).
     mouse_stage: u8,
     mouse_opts: MouseOptions,
+    /// Buttons put in host-only mode on connect (remapped ones).
+    mouse_host_only: u8,
     /// Polling rate last sent to the mouse (it re-enumerates, like the K70).
     mouse_polling_sent: Option<u8>,
     status: Status,
@@ -277,6 +281,7 @@ impl Devices {
                         let stage = self.mouse_stage.min(m65::DPI_STAGES as u8 - 1);
                         if m.set_software_mode(true).is_ok() {
                             self.mouse_opts.apply(&m, stage);
+                            let _ = m.set_button_modes(self.mouse_host_only);
                             self.status.mouse = Some(MouseInfo {
                                 name: found.name.into(),
                                 firmware: fw.unwrap_or_else(|_| "?".into()),
@@ -320,7 +325,12 @@ impl Devices {
 
 /// Keys the OS must not see: the remapped ones (Win Lock is done by the firmware).
 fn swallowed(bindings: &HashMap<u8, Action>) -> Vec<u8> {
-    bindings.keys().copied().collect()
+    bindings.iter().filter(|(_, a)| !a.passthrough()).map(|(&k, _)| k).collect()
+}
+
+/// Mouse buttons the OS must not see (bits): the remapped ones.
+fn mouse_host_only(bindings: &HashMap<u8, Action>) -> u8 {
+    bindings.iter().filter(|(_, a)| !a.passthrough()).fold(0, |m, (&bit, _)| m | bit)
 }
 
 fn run(
@@ -343,6 +353,7 @@ fn run(
         m65: None,
         mouse_stage: 2,
         mouse_opts: MouseOptions::default(),
+        mouse_host_only: 0,
         mouse_polling_sent: None,
         status: Status::default(),
         kb_opts: KeyboardOptions::default(),
@@ -357,6 +368,7 @@ fn run(
     let mut dirty = true;
     let mut reported = None::<Status>;
     let mut bindings: HashMap<u8, Action> = HashMap::new();
+    let mut mouse_bindings: HashMap<u8, Action> = HashMap::new();
     let mut injector = Injector::new();
     let mut prev_keys: Vec<u8> = Vec::new();
     let mut wheel_down = None::<Instant>;
@@ -380,6 +392,7 @@ fn run(
                     dirty = true;
                 }
                 Cmd::SetBindings(b) => {
+                    injector.stop_all();
                     bindings = b;
                     if let Some(kb) = &dev.k70 {
                         let _ = kb.set_key_modes(&swallowed(&bindings));
@@ -419,6 +432,14 @@ fn run(
                         let _ = m.select_dpi_stage(Some(stage as usize));
                     }
                 }
+                Cmd::SetMouseBindings(b) => {
+                    injector.stop_all();
+                    mouse_bindings = b;
+                    dev.mouse_host_only = mouse_host_only(&mouse_bindings);
+                    if let Some(m) = &dev.m65 {
+                        let _ = m.set_button_modes(dev.mouse_host_only);
+                    }
+                }
                 Cmd::SetMouse(o) => {
                     let polling_changed = o.polling_ms != dev.mouse_opts.polling_ms;
                     dev.mouse_opts = o;
@@ -426,6 +447,7 @@ fn run(
                         if polling_changed {
                             // Hand it back before it drops off the bus; the rescan
                             // sets the new rate and takes it again.
+                            let _ = m.set_button_modes(0);
                             let _ = m.set_software_mode(false);
                             let _ = m.set_polling_ms(dev.mouse_opts.polling_ms);
                             dev.mouse_polling_sent = Some(dev.mouse_opts.polling_ms);
@@ -438,7 +460,11 @@ fn run(
                     mouse_last = None;
                 }
                 Cmd::Shutdown(done) => {
+                    injector.stop_all();
                     if let Some(m) = &dev.m65 {
+                        // Every button back to normal first: a host-only left
+                        // button would leave the mouse unable to click.
+                        let _ = m.set_button_modes(0);
                         let _ = m.set_software_mode(false); // onboard lighting
                     }
                     if let Some(kb) = &dev.k70 {
@@ -499,6 +525,21 @@ fn run(
                         let pressed = bits & !mouse_buttons;
                         let released = mouse_buttons & !bits;
                         mouse_buttons = bits;
+                        // Remapped buttons: their action replaces the default one.
+                        for (bit, _, name) in m65::BUTTONS {
+                            let Some(action) = mouse_bindings.get(&bit) else { continue };
+                            let id = format!("m{name}");
+                            if pressed & bit != 0 {
+                                if let Action::Profile { target } = action {
+                                    on_profile(target.clone());
+                                }
+                                injector.press(&id, action);
+                            } else if released & bit != 0 {
+                                injector.release(&id, action);
+                            }
+                        }
+                        let bound = mouse_bindings.keys().fold(0u8, |m, b| m | b);
+                        let (pressed, released) = (pressed & !bound, released & !bound);
                         // Sniper: once the app defines the stages the firmware no
                         // longer slows down by itself, so select the sniper stage
                         // while held (as OpenLinkHub does).
@@ -621,9 +662,9 @@ fn run(
                             if let Action::Profile { target } = action {
                                 on_profile(target.clone());
                             }
-                            injector.press(action);
+                            injector.press(&format!("k{slot}"), action);
                         } else if was && !is {
-                            injector.release(action);
+                            injector.release(&format!("k{slot}"), action);
                         }
                     }
                     prev_keys = bits;

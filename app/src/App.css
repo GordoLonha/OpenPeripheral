@@ -345,3 +345,16 @@ button.dpi-label { cursor: pointer; }
 .zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px; }
 .zone { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
 .zone h3 { margin: 0; font-size: 14px; }
+
+/* Macro editor */
+.macro-toolbar { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.macro-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 320px; overflow: auto; }
+.macro-list li { display: grid; grid-template-columns: 24px auto 16px 1fr auto; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; background: var(--panel-2); }
+.macro-list .n { color: var(--muted); font-size: 12px; }
+.macro-list .down { color: var(--ok); font-weight: 700; }
+.macro-list .up { color: var(--muted); font-weight: 700; }
+.delay-field { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.delay-field input { width: 64px; padding: 2px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.row-actions { display: inline-flex; gap: 2px; }
+.macro-options { display: grid; gap: 12px; margin-top: 10px; }
+.mouse-assign { grid-template-columns: minmax(200px, 0.8fr) minmax(220px, 1fr) minmax(280px, 1.4fr); }

@@ -16,6 +16,7 @@ const CMD_WRITE: u8 = 0x07;
 const CMD_READ: u8 = 0x0E;
 const PROP_FIRMWARE: u8 = 0x01;
 const PROP_SPECIAL_FUNCTION: u8 = 0x04;
+const PROP_LIGHTING_CONTROL: u8 = 0x05;
 const PROP_POLLING_RATE: u8 = 0x0A;
 const PROP_DPI: u8 = 0x13;
 const PROP_COLOR: u8 = 0x22;
@@ -38,6 +39,23 @@ pub const BUTTON_DPI_UP: u8 = 0x20;
 pub const BUTTON_DPI_DOWN: u8 = 0x40;
 /// Held while pressed; the firmware lowers the DPI itself (confirmed).
 pub const BUTTON_SNIPER: u8 = 0x80;
+
+/// Buttons: (bit in report 0x03, index for key modes, name used in bindings).
+/// Indices 1..8 follow the bits in order, as in OpenLinkHub's key assignment.
+pub const BUTTONS: [(u8, u8, &str); 8] = [
+    (0x01, 1, "left"),
+    (0x02, 2, "right"),
+    (0x04, 3, "middle"),
+    (0x08, 4, "back"),
+    (0x10, 5, "forward"),
+    (0x20, 6, "dpi_up"),
+    (0x40, 7, "dpi_down"),
+    (0x80, 8, "sniper"),
+];
+
+const PROP_KEY_MODES: u8 = 0x40;
+const MODE_NORMAL: u8 = 0xC0;
+const MODE_HOST_ONLY: u8 = 0x40;
 
 pub struct M65 {
     dev: HidDevice,
@@ -112,7 +130,13 @@ impl M65 {
     /// Software mode: the host drives the LEDs. `false` (or unplugging) returns
     /// the mouse to its onboard lighting and DPI handling.
     pub fn set_software_mode(&self, on: bool) -> Result<()> {
-        self.send(&[CMD_WRITE, PROP_SPECIAL_FUNCTION, if on { MODE_SOFTWARE } else { MODE_HARDWARE }])
+        let mode = if on { MODE_SOFTWARE } else { MODE_HARDWARE };
+        self.send(&[CMD_WRITE, PROP_SPECIAL_FUNCTION, mode])?;
+        if !on {
+            // Undo the input/lighting selection set by `set_button_modes`.
+            self.send(&[CMD_WRITE, PROP_LIGHTING_CONTROL, MODE_HARDWARE, 0x00, 0x01])?;
+        }
+        Ok(())
     }
 
     /// One packet for the three zones: `07 22 03 01 [02 rgb] [03 rgb] [04 rgb]`.
@@ -173,6 +197,20 @@ impl M65 {
     /// Button response optimization: `07 30 00 00 v`, 1 = off, 2 = on.
     pub fn set_button_optimization(&self, on: bool) -> Result<()> {
         self.send(&[CMD_WRITE, PROP_BUTTON_OPTIMIZATION, 0x00, 0x00, on as u8 + 1])
+    }
+
+    /// Buttons in `host_only` (bits) stop reaching the OS and are only reported to
+    /// the host (remapping); the others act normally:
+    /// `07 40 08 00 [index mode] x8`, mode C0 normal / 40 host only.
+    pub fn set_button_modes(&self, host_only: u8) -> Result<()> {
+        let mut p = vec![CMD_WRITE, PROP_KEY_MODES, BUTTONS.len() as u8, 0x00];
+        for (bit, index, _) in BUTTONS {
+            p.extend_from_slice(&[index, if host_only & bit != 0 { MODE_HOST_ONLY } else { MODE_NORMAL }]);
+        }
+        self.send(&p)?;
+        // Commit the input selection (lighting control, 01 = mouse): without
+        // it the modes do not take (confirmed).
+        self.send(&[CMD_WRITE, PROP_LIGHTING_CONTROL, MODE_SOFTWARE, 0x00, 0x01])
     }
 
     /// Report interval in ms: 1, 2, 4 or 8 (1000/500/250/125 Hz).

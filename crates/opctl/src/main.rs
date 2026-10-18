@@ -84,6 +84,14 @@ enum M65Cmd {
     Angle { on: u8 },
     /// Button response optimization on (1) / off (0).
     Btnopt { on: u8 },
+    /// Software mode for N seconds with these buttons (hex bit mask, e.g. 18 = back+forward)
+    /// host-only, then everything back to normal.
+    Hostonly {
+        #[arg(value_parser = parse_u8_hex)]
+        bits: u8,
+        #[arg(long, default_value_t = 20)]
+        seconds: u64,
+    },
     /// Make DPI stage 1..5 active (0 = sniper).
     Stage { n: usize },
     /// Return the mouse to its onboard lighting and DPI handling.
@@ -185,6 +193,10 @@ enum Hs80Cmd {
 fn parse_u8(s: &str) -> Result<u8, String> {
     let s = s.trim_start_matches("0x");
     u8::from_str_radix(s, 16).map_err(|e| e.to_string())
+}
+
+fn parse_u8_hex(s: &str) -> Result<u8, String> {
+    u8::from_str_radix(s.trim_start_matches("0x"), 16).map_err(|e| e.to_string())
 }
 
 fn parse_u16(s: &str) -> Result<u16, String> {
@@ -491,6 +503,13 @@ fn run(api: &HidApi, cmd: Cmd) -> op_core::Result<()> {
                 M65Cmd::Polling { ms: Some(ms) } => m.set_polling_ms(ms)?,
                 M65Cmd::Angle { on } => m.set_angle_snapping(on != 0)?,
                 M65Cmd::Btnopt { on } => m.set_button_optimization(on != 0)?,
+                M65Cmd::Hostonly { bits, seconds } => {
+                    m.set_software_mode(true)?;
+                    m.set_button_modes(bits)?;
+                    thread::sleep(Duration::from_secs(seconds));
+                    m.set_button_modes(0)?;
+                    m.set_software_mode(false)?;
+                }
                 M65Cmd::Stage { n } => m.select_dpi_stage(n.checked_sub(1))?,
                 M65Cmd::Release => m.set_software_mode(false)?,
             }

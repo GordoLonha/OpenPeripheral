@@ -166,6 +166,7 @@ fn activate(app: &AppHandle, id: &str, auto_app: Option<String>) {
     *st.active.lock().unwrap() = Active { id: p.id.clone(), auto_app };
     let _ = st.engine.send(Cmd::SetLighting(p.lighting.clone()));
     let _ = st.engine.send(Cmd::SetBindings(to_slots(&p.bindings)));
+    let _ = st.engine.send(Cmd::SetMouseBindings(to_mouse_bits(&p.mouse_bindings)));
     let _ = eq::apply(&p.eq);
     let _ = app.emit("profile", st.overview());
 }
@@ -202,6 +203,26 @@ fn get_bindings(state: State<AppState>) -> remap::Bindings {
 fn set_bindings(state: State<AppState>, bindings: remap::Bindings) -> Result<(), String> {
     let _ = state.engine.send(Cmd::SetBindings(to_slots(&bindings)));
     state.edit_active(|p| p.bindings = bindings)
+}
+
+/// Button-name bindings -> report bit bindings for the engine.
+fn to_mouse_bits(b: &remap::Bindings) -> HashMap<u8, remap::Action> {
+    op_core::m65::BUTTONS
+        .iter()
+        .filter_map(|(bit, _, name)| b.get(*name).map(|a| (*bit, a.clone())))
+        .collect()
+}
+
+#[tauri::command]
+fn get_mouse_bindings(state: State<AppState>) -> remap::Bindings {
+    let id = state.active_id();
+    state.store.lock().unwrap().get(&id).map(|p| p.mouse_bindings.clone()).unwrap_or_default()
+}
+
+#[tauri::command]
+fn set_mouse_bindings(state: State<AppState>, bindings: remap::Bindings) -> Result<(), String> {
+    let _ = state.engine.send(Cmd::SetMouseBindings(to_mouse_bits(&bindings)));
+    state.edit_active(|p| p.mouse_bindings = bindings)
 }
 
 #[tauri::command]
@@ -566,6 +587,7 @@ pub fn run() {
                 },
             );
             let _ = engine.send(Cmd::SetBindings(to_slots(&start.bindings)));
+            let _ = engine.send(Cmd::SetMouseBindings(to_mouse_bits(&start.mouse_bindings)));
             let _ = eq::apply(&start.eq);
             let settings_path = config_dir.join("settings.json");
             let settings: AppSettings =
@@ -635,7 +657,9 @@ pub fn run() {
             foreground_app,
             get_app_settings,
             set_app_settings,
-            set_mouse_stage
+            set_mouse_stage,
+            get_mouse_bindings,
+            set_mouse_bindings
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

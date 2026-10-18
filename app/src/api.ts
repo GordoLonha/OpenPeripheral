@@ -40,7 +40,27 @@ export type Action =
   | { kind: 'media'; action: string }
   | { kind: 'mouse'; button: string }
   | { kind: 'profile'; target: string }
-  | { kind: 'macro'; steps: { key: string; down: boolean; delay_ms: number }[] };
+  | { kind: 'macro'; steps: MacroStep[]; options?: MacroOptions };
+
+/** key: key name, `Mouse:<button>` or `Wheel:up|down`. */
+export type MacroStep = { key: string; down: boolean; delay_ms: number };
+export type MacroOptions = {
+  trigger: 'press' | 'release' | 'hold' | 'toggle';
+  repeat: 'once' | 'times' | 'continuous';
+  times: number;
+  uninterruptible: boolean;
+  passthrough: boolean;
+  sound: string | null;
+};
+
+export const DEFAULT_MACRO_OPTIONS: MacroOptions = {
+  trigger: 'press',
+  repeat: 'once',
+  times: 2,
+  uninterruptible: false,
+  passthrough: false,
+  sound: null,
+};
 export type Bindings = Record<string, Action>;
 
 export type ProfileInfo = { id: string; name: string; apps: string[] };
@@ -75,6 +95,9 @@ export type MouseOptions = {
 
 export const api = {
   appSettings: () => invoke<AppSettings>('get_app_settings'),
+  /** Mouse button name (left, right, middle, back, forward, dpi_up, dpi_down, sniper) -> action. */
+  mouseBindings: () => invoke<Bindings>('get_mouse_bindings'),
+  setMouseBindings: (bindings: Bindings) => invoke<void>('set_mouse_bindings', { bindings }),
   /** Make a DPI stage active now (0-based). */
   setMouseStage: (stage: number) => invoke<void>('set_mouse_stage', { stage }),
   setAppSettings: (value: AppSettings) => invoke<void>('set_app_settings', { value }),

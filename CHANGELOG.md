@@ -6,6 +6,12 @@
   angle snapping; button response optimization; lighting per zone (logo, wheel) or
   following the keyboard.
 - Sniper button slows the pointer and lights the DPI LED in the sniper colour.
+- **M65 buttons**: any of the 8 buttons can be remapped per profile (key, shortcut, mouse,
+  text, media, app, macro, profile switch, disabled); back to normal when the app closes.
+- **Macros like iCUE**, for keys and mouse buttons: record keys, mouse clicks and the
+  wheel; edit each delay, reorder and delete steps; trigger on press, on release, while
+  held or toggle; repeat once, N times or continuously; run uninterrupted; keep the key's
+  own function; play a sound when it starts.
 
 ## 0.3.0 — 2026-10-17
 

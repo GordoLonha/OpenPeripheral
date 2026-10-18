@@ -13,6 +13,9 @@ pub struct Profile {
     pub lighting: Lighting,
     #[serde(default)]
     pub bindings: Bindings,
+    /// Mouse button name (see op_core::m65::BUTTONS) -> action.
+    #[serde(default)]
+    pub mouse_bindings: Bindings,
     #[serde(default)]
     pub eq: Eq,
     /// Executable names (e.g. "cs2.exe") that switch to this profile while focused.
@@ -48,7 +51,7 @@ impl Store {
     pub fn new_default(lighting: Lighting, bindings: Bindings, eq: Eq) -> Self {
         Self {
             selected: "default".into(),
-            profiles: vec![Profile { id: "default".into(), name: "Padrão".into(), lighting, bindings, eq, apps: vec![] }],
+            profiles: vec![Profile { id: "default".into(), name: "Padrão".into(), lighting, bindings, mouse_bindings: Default::default(), eq, apps: vec![] }],
         }
     }
 
@@ -78,6 +81,7 @@ impl Store {
             name: String::new(),
             lighting: Lighting::default(),
             bindings: Bindings::new(),
+            mouse_bindings: Bindings::new(),
             eq: Eq::default(),
             apps: vec![],
         });
