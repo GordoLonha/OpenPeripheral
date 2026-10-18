@@ -108,6 +108,12 @@ export function installDevMock() {
         case 'get_autostart': return true;
         case 'foreground_app': return 'cs2';
         case 'create_profile': return 'novo';
+        case 'install_kind': return 'package';
+        // ?update=1 pretends a newer release is out (Settings → Atualizações).
+        case 'plugin:updater|check':
+          return new URLSearchParams(location.search).has('update')
+            ? { rid: 1, currentVersion: __APP_VERSION__, version: '0.4.1', date: null, body: '- Exemplo de novidade\n- Outra novidade', rawJson: {} }
+            : null;
         default: return null; // set_lighting, set_geometry, select_profile, ...
       }
     },

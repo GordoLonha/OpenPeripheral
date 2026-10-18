@@ -76,6 +76,9 @@ sudo cp linux/70-openperipheral.rules /etc/udev/rules.d/
 sudo udevadm control --reload && sudo udevadm trigger
 cd app && npm ci
 npm run tauri dev     # development
+# Release builds also sign the update bundles (in-app updater): point the build at
+# the private key, or use `npm run tauri build -- --no-bundle` to skip packaging.
+export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/openperipheral-updater.key)"
 npm run tauri build   # .deb, .rpm (both install the udev rule) and AppImage
 ```
 The udev rule must sort before `73-seat-late.rules` (hence `70-`), or the `uaccess`

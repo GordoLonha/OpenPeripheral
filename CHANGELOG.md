@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 — 2026-10-18
+
+- **Updates from the app**: Configurações → Atualizações looks for a new release on GitHub
+  (also quietly a few seconds after start, with a note at the top when there is one).
+  Windows and the AppImage update themselves and restart; .rpm/.deb open the download
+  page. Updates are signed; the app only accepts ones made with the project's key.
+- From this version on, updates arrive inside the app; 0.4.0 needs this one installed by hand.
+
 ## 0.4.0 — 2026-10-17
 
 - **New look**: sidebar with icons, Keyboard and Mouse pages in tabs, settings grouped in

@@ -448,7 +448,7 @@ impl Injector {
     }
 }
 
-fn launch(target: &str) {
+pub(crate) fn launch(target: &str) {
     let target = target.trim();
     if target.is_empty() {
         return;

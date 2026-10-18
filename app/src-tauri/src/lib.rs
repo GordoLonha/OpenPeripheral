@@ -322,6 +322,29 @@ fn get_app_settings(state: State<AppState>) -> AppSettings {
     state.settings.lock().unwrap().clone()
 }
 
+/// How this copy was installed, for the update screen: the updater replaces the
+/// Windows install and an AppImage itself; .rpm/.deb go through the package manager.
+#[tauri::command]
+fn install_kind() -> &'static str {
+    if cfg!(windows) {
+        "windows"
+    } else if std::env::var_os("APPIMAGE").is_some() {
+        "appimage"
+    } else {
+        "package"
+    }
+}
+
+/// Open a web page (release notes, downloads) in the default browser.
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://github.com/GordoLonha/OpenPeripheral") {
+        return Err("endereço não permitido".into());
+    }
+    remap::launch(&url);
+    Ok(())
+}
+
 /// Make a DPI stage active (0-based); saved through the status like the DPI buttons.
 #[tauri::command]
 fn set_mouse_stage(state: State<AppState>, stage: u8) {
@@ -507,6 +530,8 @@ pub fn run() {
     let app = tauri::Builder::default()
         // A second launch (e.g. from the Start menu) just brings the window back.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![MINIMIZED_ARG]),
@@ -658,6 +683,8 @@ pub fn run() {
             get_app_settings,
             set_app_settings,
             set_mouse_stage,
+            install_kind,
+            open_url,
             get_mouse_bindings,
             set_mouse_bindings
         ])

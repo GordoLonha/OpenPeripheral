@@ -43,6 +43,8 @@
   padding: 10px 14px; border-radius: var(--r-sm); background: #2b2110; color: var(--warn);
   border: 1px solid #5a4316; font-weight: 500;
 }
+.banner.info { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); background: var(--accent-soft); color: var(--text); border-color: rgba(57, 208, 240, 0.45); }
+.release-notes p { white-space: pre-line; font-size: 12px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; padding-bottom: var(--s1); }
 .page-sub, .muted { color: var(--muted); }
 .page-sub { margin-top: 6px; font-size: 13px; }
@@ -146,6 +148,7 @@
 .swatch { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--line-strong); }
 .swatch.on { outline: 2px solid var(--text); outline-offset: 2px; }
 
+.primary, .ghost { white-space: nowrap; flex: none; }
 .primary {
   height: var(--control-h); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: var(--r-sm);
   padding: 0 18px; font-weight: 600;

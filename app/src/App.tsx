@@ -7,6 +7,7 @@ import { HeadsetOptions, KeyboardOptions } from './DeviceOptions';
 import { ColorField, Slider, Switch, Tabs } from './controls';
 import { Icon, type IconName } from './icons';
 import { MousePage } from './MousePage';
+import { RELEASES_URL, installKind, openUrl, useUpdater, type InstallKind } from './updates';
 import { ProfileSwitcher, ProfilesPage } from './Profiles';
 import { Home, batteryColor } from './Home';
 import './App.css';
@@ -44,6 +45,7 @@ export default function App() {
   const [profiles, setProfiles] = useState<Profiles | null>(null);
   const activeRef = useRef<string | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
+  const updater = useUpdater();
 
   const loadProfileData = () =>
     Promise.all([api.lighting(), api.bindings()]).then(([l, b]) => {
@@ -181,6 +183,14 @@ export default function App() {
 
       <main className="main">
         <div className="page">
+        {updater.state.kind === 'available' && page !== 'settings' && (
+          <div className="banner info" role="status">
+            <span>Nova versão {updater.state.update.version} disponível.</span>
+            <button className="ghost" onClick={() => setPage('settings')}>
+              Ver atualização
+            </button>
+          </div>
+        )}
         {status?.icue_running && (
           <div className="banner" role="status">
             O iCUE está aberto e controla o teclado. Feche-o (bandeja → Sair) para o OpenPeripheral assumir.
@@ -320,7 +330,7 @@ export default function App() {
         ) : page === 'profiles' ? (
           profiles && <ProfilesPage data={profiles} />
         ) : (
-          <SettingsPage />
+          <SettingsPage updater={updater} />
         )}
         </div>
       </main>
@@ -343,7 +353,7 @@ function NavItem(p: { icon: IconName; label: string; sub?: string; online?: bool
   );
 }
 
-function SettingsPage() {
+function SettingsPage({ updater }: { updater: ReturnType<typeof useUpdater> }) {
   const [autostart, setAutostart] = useState<boolean | null>(null);
   const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
   useEffect(() => {
@@ -383,6 +393,7 @@ function SettingsPage() {
           <Switch on={!!appSettings?.battery_tray} disabled={!appSettings} onClick={toggleTray} />
         </div>
       </section>
+      <UpdatesCard updater={updater} />
       <section className="list">
         <div className="list-row">
           <div>
@@ -430,5 +441,59 @@ function HeadsetPage({ status }: { status: Status | null }) {
         <Equalizer />
       </section>
     </>
+  );
+}
+
+function UpdatesCard({ updater }: { updater: ReturnType<typeof useUpdater> }) {
+  const [kind, setKind] = useState<InstallKind | null>(null);
+  useEffect(() => {
+    installKind().then(setKind, () => setKind('package'));
+  }, []);
+  const st = updater.state;
+  const selfUpdate = kind === 'windows' || kind === 'appimage';
+  return (
+    <section className="list">
+      <div className="list-row">
+        <div>
+          <strong>Atualizações</strong>
+          <p>
+            {st.kind === 'checking'
+              ? 'Procurando no GitHub…'
+              : st.kind === 'none'
+                ? `Você já tem a versão mais nova (${__APP_VERSION__}).`
+                : st.kind === 'available'
+                  ? `Versão ${st.update.version} disponível (você tem ${__APP_VERSION__}).`
+                  : st.kind === 'downloading'
+                    ? `Baixando… ${st.percent != null ? `${st.percent}%` : ''} O app reinicia sozinho no fim.`
+                    : st.kind === 'error'
+                      ? `Não deu para verificar: ${st.message}`
+                      : `Versão instalada: ${__APP_VERSION__}. O app também procura sozinho ao abrir.`}
+          </p>
+          {st.kind === 'available' && !selfUpdate && (
+            <p>Instalado pelo pacote do sistema: baixe o .rpm ou .deb novo na página de versões.</p>
+          )}
+        </div>
+        {st.kind === 'available' ? (
+          selfUpdate ? (
+            <button className="primary" onClick={() => updater.install(st.update)}>
+              Atualizar agora
+            </button>
+          ) : (
+            <button className="primary" onClick={() => openUrl(RELEASES_URL)}>
+              Baixar versão nova
+            </button>
+          )
+        ) : (
+          <button className="ghost" disabled={st.kind === 'checking' || st.kind === 'downloading'} onClick={() => updater.find()}>
+            Procurar atualização
+          </button>
+        )}
+      </div>
+      {st.kind === 'available' && st.update.body && (
+        <div className="list-row release-notes">
+          <p>{st.update.body.split('\n').filter((l) => l.trim().startsWith('-')).slice(0, 6).join('\n') || st.update.body.slice(0, 400)}</p>
+        </div>
+      )}
+    </section>
   );
 }
