@@ -1,0 +1,16 @@
+# OpenPeripheral: let the logged-in user access supported Corsair HID devices.
+# Generated from devices/corsair.toml by `cargo run -p opctl -- udev-rules`; do not edit.
+# Must sort before 73-seat-late.rules, which turns the uaccess tag into ACLs.
+# Install: sudo cp 70-openperipheral.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger
+# K70 RGB MK.2 Low Profile
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="1b55", TAG+="uaccess"
+# HS80 RGB Wireless (receiver)
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="0a6b", TAG+="uaccess"
+# HS80 RGB (USB cable)
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="0a69", TAG+="uaccess"
+# HS80 RGB (USB cable, headset off)
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="0a6a", TAG+="uaccess"
+# M65 RGB Elite
+KERNEL=="hidraw*", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="1b5a", TAG+="uaccess"
+# Virtual keyboard/mouse for remapped keys and macros (works on Wayland and X11)
+KERNEL=="uinput", SUBSYSTEM=="misc", TAG+="uaccess", OPTIONS+="static_node=uinput"

@@ -1,0 +1,21 @@
+{
+  "bundle": {
+    "targets": ["deb", "rpm", "appimage"],
+    "category": "Utility",
+    "longDescription": "Substituto aberto e leve do iCUE: iluminação, remapeamento de teclas, perfis e equalizador para periféricos Corsair (K70 RGB MK.2 Low Profile, HS80 RGB Wireless, M65 RGB Elite).",
+    "linux": {
+      "deb": {
+        "depends": ["pipewire", "wireplumber"],
+        "files": {
+          "/usr/lib/udev/rules.d/70-openperipheral.rules": "../../linux/70-openperipheral.rules"
+        }
+      },
+      "rpm": {
+        "depends": ["pipewire", "wireplumber"],
+        "files": {
+          "/usr/lib/udev/rules.d/70-openperipheral.rules": "../../linux/70-openperipheral.rules"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["crates/op-core", "crates/opctl", "app/src-tauri"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+hidapi = "2.6"
+thiserror = "2"
+clap = { version = "4.5", features = ["derive"] }

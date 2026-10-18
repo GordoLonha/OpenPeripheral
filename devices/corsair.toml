@@ -1,0 +1,1551 @@
+# OpenPeripheral device database: every Corsair (VID 1B1C) USB product we know of.
+# Embedded in op-core at build time; entries in <config dir>/dev.openperipheral.app/devices.toml
+# are merged on top (same pid = replaced), so a user can try a device without rebuilding.
+#
+# Fields (one [[device]] per USB PID):
+#   pid       USB product ID
+#   name      product name
+#   kind      keyboard | mouse | mousepad | headset | headset-dongle | dongle | cooler | controller | psu | other
+#   family    protocol: "nxp" = K70 MK.2 legacy 64-byte 07/0E/7F commands (protocol/k70_mk2_lp.md),
+#             "bragi" = HS80 and newer (protocol/hs80_bragi.md). Omitted when unknown.
+#   status    verified  = tested on real hardware with OpenPeripheral
+#             community = reported working by a user, not by the maintainers
+#             untested  = known to exist only; OpenPeripheral never writes to it (read-only)
+#   control   vendor HID collections the driver uses, as "usage_page:usage" (hex)
+#   leds      LED slots in a lighting frame;  layout = key layout id (layout/<id>_*.json)
+#   features  what the driver does on this device
+#   pairs     other PIDs that are the same physical device (receiver <-> headset on its cable)
+#   sources   who knows this PID: openperipheral, openlinkhub, openrgb, liquidctl (facts only, no code)
+#
+# A new device of a family we already drive works by adding (or promoting) its entry here,
+# setting family, control and status. Run `cargo run -p opctl -- udev-rules > linux/70-openperipheral.rules`
+# afterwards. Untested entries were seeded by tools/seed_devices.py.
+
+[[device]]
+pid = 0x1B55
+name = "K70 RGB MK.2 Low Profile"
+kind = "keyboard"
+family = "nxp"
+status = "verified"
+control = { command = "FFC2:0004", reply = "FFC2:0003", keys = "FFC0:0002" }
+leds = 168
+layout = "k70_mk2_lp"
+features = ["lighting", "software-mode", "key-events", "key-remap", "firmware-info", "win-lock"]
+sources = ["openperipheral", "openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x0A6B
+name = "HS80 RGB Wireless (receiver)"
+kind = "headset-dongle"
+family = "bragi"
+status = "verified"
+control = { command = "FF42:0001", events = "FF42:0002" }
+leds = 3
+features = ["lighting", "software-mode", "battery", "charge-state", "wheel-events"]
+pairs = [0x0A69, 0x0A6A]
+sources = ["openperipheral", "openlinkhub"]
+
+[[device]]
+# Same headset on its USB cable (serial matches the wireless headset).
+pid = 0x0A69
+name = "HS80 RGB (USB cable)"
+kind = "headset"
+family = "bragi"
+status = "verified"
+control = { command = "FF42:0001", events = "FF42:0002" }
+leds = 3
+features = ["lighting", "software-mode", "battery", "charge-state", "wheel-events"]
+pairs = [0x0A6B]
+sources = ["openperipheral", "openlinkhub"]
+
+[[device]]
+# Cable plugged in while the headset is off: HID only, no audio, nothing to drive.
+pid = 0x0A6A
+name = "HS80 RGB (USB cable, headset off)"
+kind = "headset"
+family = "bragi"
+status = "verified"
+features = ["presence"]
+pairs = [0x0A6B]
+sources = ["openperipheral"]
+
+# Seeded by tools/seed_devices.py: 201 PIDs, all untested (read-only).
+
+[[device]]
+pid = 0x0A34
+name = "ST100 RGB"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x0A3D
+name = "VIRTUOSO SE"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A3E
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A3F
+name = "VIRTUOSO SE"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A40
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A41
+name = "VIRTUOSO"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A42
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A43
+name = "VIRTUOSO"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A44
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A51
+name = "VOID ELITE WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A55
+name = "VOID ELITE WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A62
+name = "VIRTUOSO RGB WIRELESS XT"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A64
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A73
+name = "HEADSET DONGLE"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A88
+name = "HS80 RGB USB"
+kind = "headset"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0A97
+name = "HS80 MAX WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0C02
+name = "Hydro H80i GT"
+kind = "cooler"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x0C03
+name = "Hydro H100i GTX"
+kind = "cooler"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x0C04
+name = "H110i GT"
+kind = "cooler"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x0C07
+name = "Hydro H110i GTX"
+kind = "cooler"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x0C08
+name = "Hydro H80i v2"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C09
+name = "Hydro H100i v2"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C0A
+name = "Hydro H115i"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C0B
+name = "Lighting Node Pro"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C10
+name = "Commander Pro"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C12
+name = "Hydro H150i Pro"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C13
+name = "Hydro H115i Pro"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C14
+name = "ONE"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0C15
+name = "Hydro H100i Pro"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C17
+name = "Hydro H115i Platinum"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C18
+name = "Hydro H100i Platinum"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C19
+name = "Hydro H100i Platinum SE"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C1A
+name = "Lighting Node Core"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C1C
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C1D
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x0C1E
+name = "LS100 Lighting Kit"
+kind = "controller"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x0C20
+name = "Hydro H100i Pro XT"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C21
+name = "Hydro H115i Pro XT"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C22
+name = "Hydro H150i Pro XT"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C23
+name = "LT100"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x0C29
+name = "Hydro H60i Pro XT"
+kind = "cooler"
+status = "untested"
+sources = ["openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C2A
+name = "Commander Core XT"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C2D
+name = "Hydro H100i Pro XT v2"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x0C32
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C35
+name = "Hydro H100i Elite"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C36
+name = "Hydro H115i Elite"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C37
+name = "Hydro H150i Elite"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x0C3C
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x0C3D
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x0C3E
+name = "Commander Core"
+kind = "controller"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x0C3F
+name = "iCUE Link System Hub"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x0C40
+name = "iCUE H100i Elite RGB (White)"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C41
+name = "iCUE H150i Elite RGB (White)"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x0C42
+name = "XC7 ELITE LCD"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0C55
+name = "NAUTILUS LCD CAP"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0C56
+name = "iCUE COMMANDER DUO"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x0C57
+name = "NAUTILUS LCD CAP"
+kind = "cooler"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B11
+name = "K95 RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B12
+name = "M65"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B13
+name = "K70 RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B17
+name = "K65 RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B1E
+name = "Scimitar RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B20
+name = "Strafe"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B2D
+name = "K95 RGB PLATINUM"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B2E
+name = "M65 PRO"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B2F
+name = "Sabre RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B32
+name = "Sabre RGB Optical"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B33
+name = "K70 LUX RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B34
+name = "Glaive RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B36
+name = "K70 LUX"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B37
+name = "K65 LUX RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B38
+name = "K70 RGB RAPIDFIRE"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B39
+name = "K65 RGB RAPIDFIRE"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B3B
+name = "MM800 RGB Polaris"
+kind = "mousepad"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B3C
+name = "Harpoon RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B3D
+name = "K55 RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B3E
+name = "Scimitar PRO RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B3F
+name = "K68 RED"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B44
+name = "Strafe Red"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B48
+name = "Strafe MK.2"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B49
+name = "K70 RGB MK.2"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B4B
+name = "Dark Core RGB SE (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B4C
+name = "Ironclaw Wireless (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B4F
+name = "K68 RGB"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B51
+name = "DARK CORE RGB SE"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B5A
+name = "M65 RGB Elite"
+kind = "mouse"
+family = "nxp"
+status = "verified"
+control = { command = "FFC2:0004", reply = "FFC2:0003", events = "FFC1:0002" }
+leds = 3
+features = ["lighting", "software-mode", "firmware-info", "dpi-stages", "polling-rate"]
+sources = ["openperipheral", "openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B5C
+name = "Nightsword"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B5D
+name = "Ironclaw RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B5E
+name = "Harpoon Wireless (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B65
+name = "SLIPSTREAM WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B6B
+name = "K70 RGB MK.2 SE"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B6E
+name = "K57 RGB (Wired)"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B70
+name = "M55 RGB PRO"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B73
+name = "K70 RGB TKL"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B74
+name = "Glaive RGB PRO"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B75
+name = "Harpoon RGB PRO"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B79
+name = "SABRE RGB PRO"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B7A
+name = "SABRE PRO CS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B7C
+name = "K100 RGB Optical"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B7D
+name = "K100 MX Red"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B7E
+name = "Dark Core RGB Pro SE (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B7F
+name = "SLIPSTREAM WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B80
+name = "DARK CORE RGB PRO"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B81
+name = "DARK CORE RGB PRO Gaming Dongle"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B82
+name = "K95 RGB PLATINUM SE"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B89
+name = "K95 RGB PLATINUM XT"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B8B
+name = "Scimitar Elite RGB"
+kind = "mouse"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B8D
+name = "K60 RGB PRO SE"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1B8E
+name = "iCUE NEXUS"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B93
+name = "Katar Pro"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B94
+name = "KATAR PRO WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B98
+name = "SABRE RGB PRO WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1B9B
+name = "MM700"
+kind = "mousepad"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1B9E
+name = "M65 RGB Ultra Wired"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BA0
+name = "K60 RGB PRO"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BA1
+name = "K55 RGB PRO XT"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BA4
+name = "K55 RGB PRO"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BA5
+name = "K68 RED SHADOW"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1BA6
+name = "SLIPSTREAM WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BAB
+name = "K100 AIR"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BAC
+name = "Katar Pro XT"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BAD
+name = "K60 RGB PRO Low Profile"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BAF
+name = "K65 Mini"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BB2
+name = "DARKSTAR RGB WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BB3
+name = "K70 RGB PRO V2"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BB5
+name = "M65 RGB Ultra Wireless (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BB6
+name = "K70 PPO MINI"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BB8
+name = "NIGHTSABRE WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BB9
+name = "K70 RGB TKL Champion Series"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BBA
+name = "Katar Pro V2"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1BC0
+name = "K70 MAX"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BC3
+name = "K65 RGB MINI"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BC4
+name = "K70 RGB PRO"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BC5
+name = "K100 RGB Optical"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BC6
+name = "K70 RGB PRO Optomechanical"
+kind = "keyboard"
+family = "nxp"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BC7
+name = "K60 RGB PRO TKL Black"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1BC9
+name = "MM700 3XL"
+kind = "mousepad"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BCF
+name = "K65 RGB MINI"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BD4
+name = "K70 PRO"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BD6
+name = "M65 RGB ULTRA WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BD7
+name = "K65 PRO MINI"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BDB
+name = "SCIMITAR RGB ELITE WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BDC
+name = "M75 Wireless"
+kind = "dongle"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BE3
+name = "Scimitar Elite RGB"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BED
+name = "K60 RGB PRO TKL White"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openrgb"]
+
+[[device]]
+pid = 0x1BF0
+name = "M75 Gaming Mouse"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BF1
+name = "M75 Wireless (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BF2
+name = "M75 AIR WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BFD
+name = "K70 Core RGB"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x1BFE
+name = "K55 CORE RGB"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1BFF
+name = "K70 CORE RGB"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1C00
+name = "LINK TM USB DONGLE"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x1C05
+name = "HX750i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C06
+name = "HX850i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C07
+name = "HX1000i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C08
+name = "HX1200i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C0A
+name = "RM650i"
+kind = "psu"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x1C0B
+name = "RM750i"
+kind = "psu"
+status = "untested"
+sources = ["liquidctl"]
+
+[[device]]
+pid = 0x1C0C
+name = "RM850i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C0D
+name = "RM1000i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C1E
+name = "HX1000i (2022)"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C1F
+name = "HX1500i"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C23
+name = "HX1200i ATX 3.1"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1C27
+name = "HX1200i ATX 3.1 #2"
+kind = "psu"
+status = "untested"
+sources = ["openlinkhub", "liquidctl"]
+
+[[device]]
+pid = 0x1D00
+name = "1000D Obsidian"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb", "liquidctl"]
+
+[[device]]
+pid = 0x1D04
+name = "SPEC OMEGA RGB"
+kind = "controller"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x2A02
+name = "VIRTUOSO MAX WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A03
+name = "VIRTUOSO MAX WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A05
+name = "VOID MAX WIRELESS V2"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A08
+name = "VOID WIRELESS V2"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A0C
+name = "HS80 MAX WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A0F
+name = "HS80 MAX WIRELESS"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2A12
+name = "VOID MAX WIRELESS V2"
+kind = "headset-dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B00
+name = "Ironclaw Wireless SE"
+kind = "dongle"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x2B01
+name = "K70 Core RGB TKL"
+kind = "keyboard"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x2B02
+name = "K70 CORE TKL"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B03
+name = "M55"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B04
+name = "MAKR 75"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B05
+name = "K55 CORE RGB"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B07
+name = "K65 PLUS WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B08
+name = "M75 WIRELESS"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B0A
+name = "K70 CORE RGB"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B0D
+name = "VANGUARD 96"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B0E
+name = "VANGUARD 96 PRO"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B0F
+name = "VANGUARD 96 WIRELESS"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B10
+name = "K65 PLUS WIRELESS"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B11
+name = "K65 PLUS WIRELESS"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B14
+name = "K70 PRO TKL"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B1B
+name = "SLIPSTREAM WIRELESS"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B1C
+name = "NIGHTSWORD V2"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B20
+name = "K55 CORE TKL RGB"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B21
+name = "VANGUARD 99 AIR"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B22
+name = "SCIMITAR ELITE WIRELESS SE"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B23
+name = "K65 PLUS WIRELESS"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B28
+name = "SABRE V2 PRO"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B29
+name = "SABRE V2 PRO MG"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B2A
+name = "SABRE V2 PRO DONGLE"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B2E
+name = "HARPOON V2"
+kind = "mouse"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B31
+name = "CLIPPER MINI PRO 60"
+kind = "keyboard"
+status = "untested"
+sources = ["openlinkhub"]
+
+[[device]]
+pid = 0x2B32
+name = "Ironclaw Wireless SE (Wired)"
+kind = "mouse"
+family = "bragi"
+status = "untested"
+sources = ["openlinkhub", "openrgb"]
+
+[[device]]
+pid = 0x2B34
+name = "SABRE V2 PRO DONGLE"
+kind = "dongle"
+status = "untested"
+sources = ["openlinkhub"]

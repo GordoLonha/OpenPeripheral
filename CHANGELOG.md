@@ -1,0 +1,35 @@
+# Changelog
+
+## 0.3.0 — 2026-10-17
+
+First public version, for Linux and Windows (beta).
+
+### Linux (new)
+- Runs on Linux: tested on Fedora 44, KDE Plasma (Wayland). `.deb`, `.rpm` and AppImage;
+  the packages install the udev rule for device access.
+- Key remaps and macros through a uinput virtual keyboard (work on Wayland), ABNT2 layout.
+- Headset EQ through a PipeWire filter in front of the HS80, changed live.
+
+### Devices
+- **Device database** (`devices/corsair.toml`): about 200 Corsair devices, each with
+  protocol family and status; untested devices are never written to. udev rules are
+  generated from it.
+- **K70 RGB MK.2 LP**: Profile, Brightness and Win Lock keys; Win Lock done by the
+  firmware (works with the app closed), optional Alt+Tab / Alt+F4 / Shift+Tab lock;
+  polling rate; LEDs follow the real key matrix (painting and effects hit the right keys).
+- **HS80 RGB Wireless**: volume-wheel click cycles EQ presets; status LED shows the
+  battery colour; auto power-off timer; mic mute; firmware version; battery updates
+  from the headset's own notifications.
+- **M65 RGB Elite** (new): lighting follows the keyboard, DPI stage indicator, firmware.
+
+### Fixes
+- Quitting on logout, shutdown or `kill` returns the devices to hardware mode (before,
+  the K70 could stop typing until replugged).
+- Battery icon visible in Linux trays (AppIndicator needs a menu).
+
+### Windows (beta)
+Builds and packages, but this version was not tested on Windows hardware.
+
+## 0.2.0
+Windows only: lighting, ABNT2 key map, remaps and macros, profiles with auto-switch,
+HS80 battery in the tray and EQ via Equalizer APO.

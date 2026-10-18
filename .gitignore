@@ -1,0 +1,12 @@
+/target
+node_modules/
+dist/
+# local machine settings (e.g. target-dir outside OneDrive)
+.cargo/config.toml
+# raw USB captures can contain serial numbers; keep them local
+captures/
+dumps/
+/release
+
+# personal restore guide (NAS paths, local machine setup)
+RESTORE.md

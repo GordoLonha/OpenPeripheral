@@ -1,0 +1,50 @@
+# Push a tag like v0.3.0 to build the Linux and Windows packages and attach them to a
+# draft GitHub Release. Review the draft, then publish it by hand.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04   # .deb, .rpm, AppImage
+          - os: windows-latest # NSIS installer (beta)
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: System libraries (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev \
+            libxdo-dev libudev-dev libssl-dev patchelf rpm libfuse2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Frontend dependencies
+        working-directory: app
+        run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: app
+          tagName: ${{ github.ref_name }}
+          releaseName: OpenPeripheral ${{ github.ref_name }}
+          releaseBody: |
+            See CHANGELOG.md. **Linux**: tested on Fedora 44 (KDE Wayland).
+            **Windows: beta**, builds but not yet tested on Windows hardware.
+          releaseDraft: true
+          prerelease: false
