@@ -21,6 +21,7 @@ type Props = {
 
 export function Home({ status, profiles, onOpen, onScene }: Props) {
   const hs = status?.headset;
+  const anyDevice = !!(status?.keyboard || status?.headset || status?.mouse);
   const active = profiles?.profiles.find((p) => p.id === profiles.active);
   return (
     <>
@@ -34,7 +35,18 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
         </div>
       </header>
 
+      {!anyDevice && (
+        <section className="card empty-state">
+          <h2 className="card-title">Nenhum aparelho Corsair encontrado</h2>
+          <p className="muted">
+            Conecte o teclado, o fone ou o mouse: eles aparecem aqui sozinhos.
+            {status?.icue_running && ' Feche o iCUE (bandeja → Sair), senão ele fica com os aparelhos.'}
+          </p>
+        </section>
+      )}
+
       <section className="device-cards">
+        {status?.keyboard && (
         <button className="device-card" onClick={() => onOpen('keyboard')}>
           <KeyboardGlyph />
           <div>
@@ -43,6 +55,8 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
           </div>
           <span className={'dot' + (status?.keyboard ? ' online' : '')} aria-hidden />
         </button>
+        )}
+        {hs && (
         <button className="device-card" onClick={() => onOpen('headset')}>
           <HeadsetGlyph />
           <div>
@@ -53,6 +67,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
           </div>
           {hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
         </button>
+        )}
         {status?.mouse && (
           <button className="device-card" onClick={() => onOpen('mouse')}>
             <MouseGlyph />
@@ -67,6 +82,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
         )}
       </section>
 
+      {(status?.keyboard || status?.mouse) && (
       <section className="home-section">
         <h2>Cenas de iluminação</h2>
         <div className="scenes">
@@ -77,8 +93,9 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
             </button>
           ))}
         </div>
-        <p className="muted small">Aplica no perfil em uso. Ajuste fino em Teclado → Iluminação.</p>
+        <p className="muted small">Aplica no perfil em uso, no teclado e na luz do mouse que segue o teclado.</p>
       </section>
+      )}
     </>
   );
 }

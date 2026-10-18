@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-17
+
+- **New look**: sidebar with icons, Keyboard and Mouse pages in tabs, settings grouped in
+  lists, consistent colours, spacing and controls.
+- **Only the devices you have**: the menu and the home page show the connected devices,
+  like iCUE; with none, a short note says what to do.
 - **M65 RGB Elite page**: five DPI stages plus sniper, each with its own DPI (X/Y can
   differ) and indicator colour, iCUE's defaults; click a stage to use it; polling rate;
   angle snapping; button response optimization; lighting per zone (logo, wheel) or

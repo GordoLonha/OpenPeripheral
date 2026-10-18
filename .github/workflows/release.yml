@@ -45,6 +45,6 @@ jobs:
           releaseName: OpenPeripheral ${{ github.ref_name }}
           releaseBody: |
             See CHANGELOG.md. **Linux**: tested on Fedora 44 (KDE Wayland).
-            **Windows: beta**, builds but not yet tested on Windows hardware.
+            **Windows: beta**, builds and passes the tests; hardware tests on Windows still in progress.
           releaseDraft: true
           prerelease: false

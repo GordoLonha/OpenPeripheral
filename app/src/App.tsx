@@ -122,6 +122,8 @@ export default function App() {
         </nav>
         <nav className="nav-group" aria-label="Dispositivos">
           <div className="nav-label">Dispositivos</div>
+          {!status?.keyboard && !status?.headset && !status?.mouse && <p className="nav-empty">Nenhum conectado</p>}
+          {(status?.keyboard || page === 'keyboard') && (
           <NavItem
             icon="keyboard"
             label="Teclado"
@@ -130,6 +132,8 @@ export default function App() {
             active={page === 'keyboard'}
             onClick={() => setPage('keyboard')}
           />
+          )}
+          {(status?.headset || page === 'headset') && (
           <NavItem
             icon="headset"
             label="Headset"
@@ -144,6 +148,7 @@ export default function App() {
             active={page === 'headset'}
             onClick={() => setPage('headset')}
           />
+          )}
           {(status?.mouse || page === 'mouse') && (
             <NavItem
               icon="mouse"

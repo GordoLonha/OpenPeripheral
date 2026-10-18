@@ -15,6 +15,8 @@
   box-shadow: 0 0 12px rgba(57, 208, 240, 0.25);
 }
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-empty { color: var(--faint); font-size: 12px; padding: 4px var(--s2); }
+.empty-state { display: grid; gap: var(--s2); }
 .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--faint); padding: var(--s2) var(--s2) var(--s1); }
 .nav-item {
   position: relative; display: grid; grid-template-columns: 20px 1fr auto; align-items: center; gap: 10px;

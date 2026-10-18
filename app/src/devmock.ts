@@ -76,6 +76,15 @@ let mouseBindings: Bindings = {
 };
 let eq: Eq = { enabled: true, preset: 'fps', gains: [-3, -2, -1, 0, 0, 1.5, 3.5, 4.5, 3, 0] };
 
+// ?devices=mouse (or keyboard,headset,...) shows only those, like a PC with just the mouse.
+const only = new URLSearchParams(location.search).get('devices');
+if (only) {
+  const want = only.split(',');
+  if (!want.includes('keyboard')) status.keyboard = null;
+  if (!want.includes('headset')) status.headset = null;
+  if (!want.includes('mouse')) status.mouse = null;
+}
+
 export function installDevMock() {
   mockIPC(
     (cmd, args) => {
