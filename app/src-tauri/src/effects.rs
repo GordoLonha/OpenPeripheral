@@ -15,7 +15,7 @@ pub enum Effect {
     Reactive,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Lighting {
     pub effect: Effect,
     /// Main colour (effect colour / pressed colour for Reactive).

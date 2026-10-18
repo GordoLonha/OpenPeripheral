@@ -3,6 +3,7 @@ mod effects;
 mod engine;
 mod eq;
 mod profiles;
+mod mouse;
 mod remap;
 #[cfg(target_os = "linux")]
 mod uinput;
@@ -64,6 +65,9 @@ struct AppSettings {
     /// M65 DPI stage (0-based), restored when the mouse connects.
     #[serde(default = "two")]
     mouse_stage: u8,
+    /// M65 DPI stages, sniper, polling, angle snapping, lighting.
+    #[serde(default)]
+    mouse: mouse::MouseOptions,
 }
 
 fn two() -> u8 {
@@ -104,6 +108,7 @@ impl AppSettings {
         let _ = engine.send(Cmd::SetKeyboard(self.keyboard()));
         let _ = engine.send(Cmd::SetHeadset(self.headset()));
         let _ = engine.send(Cmd::SetMouseStage(self.mouse_stage));
+        let _ = engine.send(Cmd::SetMouse(self.mouse.clone()));
     }
 }
 
@@ -294,6 +299,12 @@ fn foreground_app() -> Option<String> {
 #[tauri::command]
 fn get_app_settings(state: State<AppState>) -> AppSettings {
     state.settings.lock().unwrap().clone()
+}
+
+/// Make a DPI stage active (0-based); saved through the status like the DPI buttons.
+#[tauri::command]
+fn set_mouse_stage(state: State<AppState>, stage: u8) {
+    let _ = state.engine.send(Cmd::SetMouseStage(stage));
 }
 
 #[tauri::command]
@@ -623,7 +634,8 @@ pub fn run() {
             delete_profile,
             foreground_app,
             get_app_settings,
-            set_app_settings
+            set_app_settings,
+            set_mouse_stage
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

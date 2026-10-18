@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- **M65 RGB Elite page**: five DPI stages plus sniper, each with its own DPI (X/Y can
+  differ) and indicator colour, iCUE's defaults; click a stage to use it; polling rate;
+  angle snapping; button response optimization; lighting per zone (logo, wheel) or
+  following the keyboard.
+- Sniper button slows the pointer and lights the DPI LED in the sniper colour.
+
 ## 0.3.0 — 2026-10-17
 
 First public version, for Linux and Windows (beta).

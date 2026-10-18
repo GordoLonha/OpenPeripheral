@@ -15,7 +15,7 @@ export const SCENES: { id: string; name: string; css: string; patch: Partial<Lig
 type Props = {
   status: Status | null;
   profiles: Profiles | null;
-  onOpen: (page: 'keyboard' | 'headset') => void;
+  onOpen: (page: 'keyboard' | 'headset' | 'mouse') => void;
   onScene: (patch: Partial<Lighting>) => void;
 };
 
@@ -54,7 +54,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
           {hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
         </button>
         {status?.mouse && (
-          <div className="device-card">
+          <button className="device-card" onClick={() => onOpen('mouse')}>
             <MouseGlyph />
             <div>
               <strong>{status.mouse.name}</strong>
@@ -63,7 +63,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
               </small>
             </div>
             <span className="dot online" aria-hidden />
-          </div>
+          </button>
         )}
       </section>
 

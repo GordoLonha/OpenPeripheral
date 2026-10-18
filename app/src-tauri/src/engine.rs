@@ -20,6 +20,7 @@ use serde::Serialize;
 use std::collections::HashMap;
 
 use crate::battery_icon;
+use crate::mouse::MouseOptions;
 use crate::effects::{self, Geometry, Heat, Lighting};
 use crate::remap::{Action, Injector};
 
@@ -42,8 +43,9 @@ pub enum Cmd {
     SetBindings(HashMap<u8, Action>),
     /// Win Lock on/off (Windows keys blocked, lock LED lit).
     SetWinLock(bool),
-    /// DPI stage (0-based) to restore when the mouse connects.
+    /// DPI stage (0-based): restored on connect, selected now if connected.
     SetMouseStage(u8),
+    SetMouse(MouseOptions),
     SetKeyboard(KeyboardOptions),
     SetHeadset(HeadsetOptions),
     Shutdown(Sender<()>),
@@ -186,6 +188,9 @@ struct Devices {
     m65: Option<M65>,
     /// DPI stage to select on connect (kept in settings by the app).
     mouse_stage: u8,
+    mouse_opts: MouseOptions,
+    /// Polling rate last sent to the mouse (it re-enumerates, like the K70).
+    mouse_polling_sent: Option<u8>,
     status: Status,
     kb_opts: KeyboardOptions,
     hs_opts: HeadsetOptions,
@@ -261,10 +266,17 @@ impl Devices {
                 }
                 DeviceKind::LegacyMouse if self.m65.is_none() && !self.status.icue_running => {
                     if let Ok(m) = M65::open(&self.api, &found) {
+                        // Polling first, in hardware mode: the mouse re-enumerates.
+                        let want = self.mouse_opts.polling_ms;
+                        if self.mouse_polling_sent != Some(want) && m.polling_ms().is_some_and(|ms| ms != want) {
+                            self.mouse_polling_sent = Some(want);
+                            let _ = m.set_polling_ms(want);
+                            continue;
+                        }
                         let fw = m.firmware_info().map(|f| format!("{}.{:02x}", f.version >> 8, f.version & 0xff));
                         let stage = self.mouse_stage.min(m65::DPI_STAGES as u8 - 1);
                         if m.set_software_mode(true).is_ok() {
-                            let _ = m.select_dpi_stage(Some(stage as usize));
+                            self.mouse_opts.apply(&m, stage);
                             self.status.mouse = Some(MouseInfo {
                                 name: found.name.into(),
                                 firmware: fw.unwrap_or_else(|_| "?".into()),
@@ -330,6 +342,8 @@ fn run(
         hs80: None,
         m65: None,
         mouse_stage: 2,
+        mouse_opts: MouseOptions::default(),
+        mouse_polling_sent: None,
         status: Status::default(),
         kb_opts: KeyboardOptions::default(),
         hs_opts: HeadsetOptions::default(),
@@ -348,7 +362,7 @@ fn run(
     let mut wheel_down = None::<Instant>;
     let mut mouse_buttons = 0u8;
     let (mut mouse_tick, mut mouse_sent_at) = (Instant::now(), Instant::now());
-    let mut mouse_last = None::<(op_core::Rgb, op_core::Rgb)>;
+    let mut mouse_last = None::<(op_core::Rgb, op_core::Rgb, op_core::Rgb)>;
     let mut flash_until = None::<Instant>;
     // Last LED tick, last frame actually sent and when.
     let (mut hs_tick, mut hs_sent_at, mut hs_last_frame) = (Instant::now(), Instant::now(), None::<[u8; hs80::LED_BYTES]>);
@@ -397,7 +411,32 @@ fn run(
                         let _ = hs.set_sleep(m);
                     }
                 }
-                Cmd::SetMouseStage(stage) => dev.mouse_stage = stage,
+                Cmd::SetMouseStage(stage) => {
+                    let stage = stage.min(m65::DPI_STAGES as u8 - 1);
+                    dev.mouse_stage = stage;
+                    if let (Some(m), Some(info)) = (&dev.m65, dev.status.mouse.as_mut()) {
+                        info.dpi_stage = stage;
+                        let _ = m.select_dpi_stage(Some(stage as usize));
+                    }
+                }
+                Cmd::SetMouse(o) => {
+                    let polling_changed = o.polling_ms != dev.mouse_opts.polling_ms;
+                    dev.mouse_opts = o;
+                    if let Some(m) = &dev.m65 {
+                        if polling_changed {
+                            // Hand it back before it drops off the bus; the rescan
+                            // sets the new rate and takes it again.
+                            let _ = m.set_software_mode(false);
+                            let _ = m.set_polling_ms(dev.mouse_opts.polling_ms);
+                            dev.mouse_polling_sent = Some(dev.mouse_opts.polling_ms);
+                            dev.drop_mouse();
+                            last_scan = Some(Instant::now());
+                        } else {
+                            dev.mouse_opts.apply(m, dev.mouse_stage);
+                        }
+                    }
+                    mouse_last = None;
+                }
                 Cmd::Shutdown(done) => {
                     if let Some(m) = &dev.m65 {
                         let _ = m.set_software_mode(false); // onboard lighting
@@ -458,7 +497,16 @@ fn run(
                 match m.read_buttons(0) {
                     Ok(Some(bits)) => {
                         let pressed = bits & !mouse_buttons;
+                        let released = mouse_buttons & !bits;
                         mouse_buttons = bits;
+                        // Sniper: once the app defines the stages the firmware no
+                        // longer slows down by itself, so select the sniper stage
+                        // while held (as OpenLinkHub does).
+                        if pressed & m65::BUTTON_SNIPER != 0 {
+                            let _ = m.select_dpi_stage(None);
+                        } else if released & m65::BUTTON_SNIPER != 0 {
+                            let _ = m.select_dpi_stage(Some(info.dpi_stage as usize));
+                        }
                         let max = m65::DPI_STAGES as u8 - 1;
                         let next = if pressed & m65::BUTTON_DPI_UP != 0 {
                             Some((info.dpi_stage + 1).min(max))
@@ -481,10 +529,11 @@ fn run(
                 }
             }
             if now - mouse_tick >= HS_FRAME {
-                let c = effects::headset(&lighting, (now - start).as_secs_f32());
-                let frame = (c, m65::STAGE_COLORS[info.dpi_stage as usize]);
+                let (logo, wheel) = dev.mouse_opts.zones(&lighting, (now - start).as_secs_f32());
+                let sniper = mouse_buttons & m65::BUTTON_SNIPER != 0;
+                let frame = (logo, dev.mouse_opts.dpi_color(info.dpi_stage, sniper), wheel);
                 if mouse_last != Some(frame) || now - mouse_sent_at >= HS_KEEPALIVE {
-                    mouse_lost |= m.set_leds(frame.0, frame.1, frame.0).is_err();
+                    mouse_lost |= m.set_leds(frame.0, frame.1, frame.2).is_err();
                     mouse_last = Some(frame);
                     mouse_sent_at = now;
                 }

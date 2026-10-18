@@ -332,3 +332,16 @@ kbd {
   content: ''; position: absolute; right: -5px; top: 3px; width: 3px; height: 5px; border-radius: 0 2px 2px 0; background: currentColor;
 }
 .battery-shape span { display: block; height: 100%; border-radius: 1px; }
+
+/* Mouse page */
+.dpi-stages { display: grid; gap: 8px; margin-top: 12px; }
+.dpi-row { display: grid; grid-template-columns: 64px 1fr 84px auto auto 36px; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 10px; }
+.dpi-row:has(.dpi-num + .dpi-num) { grid-template-columns: 64px 1fr 84px 84px auto 36px; }
+.dpi-row.active { background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--accent); }
+.dpi-label { font-weight: 600; text-align: left; background: none; border: 0; color: var(--text); padding: 0; }
+button.dpi-label { cursor: pointer; }
+.dpi-num { width: 84px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); color: var(--text); }
+.dpi-color { width: 36px; height: 28px; padding: 0; border: 0; background: none; }
+.zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px; }
+.zone { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; }
+.zone h3 { margin: 0; font-size: 14px; }

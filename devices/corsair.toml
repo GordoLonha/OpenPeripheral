@@ -700,7 +700,7 @@ family = "nxp"
 status = "verified"
 control = { command = "FFC2:0004", reply = "FFC2:0003", events = "FFC1:0002" }
 leds = 3
-features = ["lighting", "software-mode", "firmware-info", "dpi-stages", "polling-rate"]
+features = ["lighting", "software-mode", "firmware-info", "dpi-stages", "sniper", "polling-rate", "angle-snapping", "button-optimization"]
 sources = ["openperipheral", "openlinkhub", "openrgb"]
 
 [[device]]

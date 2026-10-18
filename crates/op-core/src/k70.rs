@@ -259,7 +259,7 @@ impl K70 {
 }
 
 #[cfg(target_os = "linux")]
-fn polling_from_sysfs(node: &str) -> Option<u8> {
+pub(crate) fn polling_from_sysfs(node: &str) -> Option<u8> {
     // /dev/hidrawN -> /sys/class/hidraw/hidrawN/device = <usb-dev>:1.1/<hid-dev>
     let name = std::path::Path::new(node).file_name()?;
     let hid = std::fs::canonicalize(std::path::Path::new("/sys/class/hidraw").join(name).join("device")).ok()?;
@@ -270,7 +270,7 @@ fn polling_from_sysfs(node: &str) -> Option<u8> {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn polling_from_sysfs(_node: &str) -> Option<u8> {
+pub(crate) fn polling_from_sysfs(_node: &str) -> Option<u8> {
     None
 }
 

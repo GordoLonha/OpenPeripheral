@@ -19,6 +19,7 @@ const PROP_SPECIAL_FUNCTION: u8 = 0x04;
 const PROP_POLLING_RATE: u8 = 0x0A;
 const PROP_DPI: u8 = 0x13;
 const PROP_COLOR: u8 = 0x22;
+const PROP_BUTTON_OPTIMIZATION: u8 = 0x30;
 const MODE_HARDWARE: u8 = 0x01;
 const MODE_SOFTWARE: u8 = 0x02;
 
@@ -35,18 +36,13 @@ pub const DPI_MAX: u16 = 18_000;
 /// Button bits in report 0x03 byte 1 (confirmed 2026-10-17).
 pub const BUTTON_DPI_UP: u8 = 0x20;
 pub const BUTTON_DPI_DOWN: u8 = 0x40;
-
-/// Colour of each DPI stage on the indicator LED (iCUE-like defaults).
-pub const STAGE_COLORS: [Rgb; DPI_STAGES] = [
-    Rgb::new(255, 0, 0),
-    Rgb::new(255, 255, 255),
-    Rgb::new(0, 255, 0),
-    Rgb::new(160, 0, 255),
-    Rgb::new(0, 190, 255),
-];
+/// Held while pressed; the firmware lowers the DPI itself (confirmed).
+pub const BUTTON_SNIPER: u8 = 0x80;
 
 pub struct M65 {
     dev: HidDevice,
+    /// hidraw path of the command interface, to read the USB report interval.
+    node: std::ffi::CString,
     replies: HidDevice,
     /// MI_00 `FFC1:0002`: button bitmap (report 0x03).
     events: Option<HidDevice>,
@@ -64,7 +60,7 @@ impl M65 {
         let cmd = found.collection(0xFFC2, 0x0004).ok_or(Error::NotFound("M65 command collection"))?;
         let rep = found.collection(0xFFC2, 0x0003).ok_or(Error::NotFound("M65 reply collection"))?;
         let events = found.collection(0xFFC1, 0x0002).and_then(|c| api.open_path(&c.path).ok());
-        Ok(Self { dev: api.open_path(&cmd.path)?, replies: api.open_path(&rep.path)?, events })
+        Ok(Self { dev: api.open_path(&cmd.path)?, node: cmd.path.clone(), replies: api.open_path(&rep.path)?, events })
     }
 
     /// Next button bitmap (report 0x03 byte 1), waiting up to `timeout_ms`.
@@ -138,21 +134,45 @@ impl M65 {
     }
 
     /// Define a DPI stage (0..5) or the sniper stage (`None`) with its indicator
-    /// colour: `07 13 (D1+stage | D0) 00 00 x_lo x_hi y_lo y_hi r g b`.
-    pub fn set_dpi_stage(&self, stage: Option<usize>, dpi: u16, color: Rgb) -> Result<()> {
+    /// colour: `07 13 (D1+stage | D0) 00 00 x_lo x_hi y_lo y_hi r g b` (confirmed).
+    pub fn set_dpi_stage_xy(&self, stage: Option<usize>, x: u16, y: u16, color: Rgb) -> Result<()> {
         let index = match stage {
             Some(s) if s < DPI_STAGES => 0xD1 + s as u8,
             Some(_) => return Err(Error::BadReply("DPI stage out of range".into())),
             None => 0xD0,
         };
-        let [lo, hi] = dpi.clamp(DPI_MIN, DPI_MAX).to_le_bytes();
-        self.send(&[CMD_WRITE, PROP_DPI, index, 0x00, 0x00, lo, hi, lo, hi, color.r, color.g, color.b])
+        let [xl, xh] = x.clamp(DPI_MIN, DPI_MAX).to_le_bytes();
+        let [yl, yh] = y.clamp(DPI_MIN, DPI_MAX).to_le_bytes();
+        self.send(&[CMD_WRITE, PROP_DPI, index, 0x00, 0x00, xl, xh, yl, yh, color.r, color.g, color.b])
+    }
+
+    /// Same DPI on both axes.
+    pub fn set_dpi_stage(&self, stage: Option<usize>, dpi: u16, color: Rgb) -> Result<()> {
+        self.set_dpi_stage_xy(stage, dpi, dpi, color)
     }
 
     /// Make a stage active: `07 13 02 00 n`, n = stage + 1, 0 = sniper.
     pub fn select_dpi_stage(&self, stage: Option<usize>) -> Result<()> {
         let n = stage.map_or(0, |s| s.min(DPI_STAGES - 1) as u8 + 1);
         self.send(&[CMD_WRITE, PROP_DPI, 0x02, 0x00, n])
+    }
+
+    /// Current USB report interval in ms (Linux: from sysfs).
+    pub fn polling_ms(&self) -> Option<u8> {
+        crate::k70::polling_from_sysfs(self.node.to_str().ok()?)
+    }
+
+    /// Angle snapping (iCUE "Correção de Ângulo"): `07 13 04 00 v` and `07 13 04 01 v`.
+    pub fn set_angle_snapping(&self, on: bool) -> Result<()> {
+        for i in 0..=1 {
+            self.send(&[CMD_WRITE, PROP_DPI, 0x04, i, on as u8])?;
+        }
+        Ok(())
+    }
+
+    /// Button response optimization: `07 30 00 00 v`, 1 = off, 2 = on.
+    pub fn set_button_optimization(&self, on: bool) -> Result<()> {
+        self.send(&[CMD_WRITE, PROP_BUTTON_OPTIMIZATION, 0x00, 0x00, on as u8 + 1])
     }
 
     /// Report interval in ms: 1, 2, 4 or 8 (1000/500/250/125 Hz).

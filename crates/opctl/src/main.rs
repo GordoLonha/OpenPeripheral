@@ -76,6 +76,14 @@ enum M65Cmd {
         #[arg(long, default_value_t = 10)]
         seconds: u64,
     },
+    /// Define DPI stage 1..5 (0 = sniper): DPI and indicator colour.
+    Dpi { n: usize, dpi: u16, color: Rgb },
+    /// USB polling interval in ms (1, 2, 4, 8); prints the current one without an argument.
+    Polling { ms: Option<u8> },
+    /// Angle snapping on (1) / off (0).
+    Angle { on: u8 },
+    /// Button response optimization on (1) / off (0).
+    Btnopt { on: u8 },
     /// Make DPI stage 1..5 active (0 = sniper).
     Stage { n: usize },
     /// Return the mouse to its onboard lighting and DPI handling.
@@ -478,6 +486,11 @@ fn run(api: &HidApi, cmd: Cmd) -> op_core::Result<()> {
                     }
                     m.set_software_mode(false)?;
                 }
+                M65Cmd::Dpi { n, dpi, color } => m.set_dpi_stage(n.checked_sub(1), dpi, color)?,
+                M65Cmd::Polling { ms: None } => println!("polling: {:?} ms", m.polling_ms()),
+                M65Cmd::Polling { ms: Some(ms) } => m.set_polling_ms(ms)?,
+                M65Cmd::Angle { on } => m.set_angle_snapping(on != 0)?,
+                M65Cmd::Btnopt { on } => m.set_button_optimization(on != 0)?,
                 M65Cmd::Stage { n } => m.select_dpi_stage(n.checked_sub(1))?,
                 M65Cmd::Release => m.set_software_mode(false)?,
             }

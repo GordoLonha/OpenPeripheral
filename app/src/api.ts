@@ -57,10 +57,26 @@ export type AppSettings = {
   /** HS80 auto power-off in minutes (0 = never); null = headset's own setting. */
   headset_sleep_min: number | null;
   mic_sync: boolean;
+  /** M65 DPI stage (0-based) restored on connect. */
+  mouse_stage: number;
+  mouse: MouseOptions;
+};
+
+export type DpiStage = { x: number; y: number; color: RGB };
+export type MouseOptions = {
+  stages: DpiStage[];
+  sniper: DpiStage;
+  /** 1, 2, 4 or 8 ms. */
+  polling_ms: number;
+  angle_snapping: boolean;
+  button_optimization: boolean;
+  lighting: { follow_keyboard: boolean; logo: Lighting; wheel: Lighting };
 };
 
 export const api = {
   appSettings: () => invoke<AppSettings>('get_app_settings'),
+  /** Make a DPI stage active now (0-based). */
+  setMouseStage: (stage: number) => invoke<void>('set_mouse_stage', { stage }),
   setAppSettings: (value: AppSettings) => invoke<void>('set_app_settings', { value }),
   /** Change some settings, starting from the saved ones (Win Lock may have been toggled on the keyboard). */
   patchAppSettings: async (patch: Partial<AppSettings>) => {

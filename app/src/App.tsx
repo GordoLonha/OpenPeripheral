@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, fromHex, toHex, type AppSettings, type Bindings, type Effect, type Lighting, type Profiles, type RGB, type Status } from './api';
+import { api, toHex, type AppSettings, type Bindings, type Effect, type Lighting, type Profiles, type RGB, type Status } from './api';
 import { Keyboard, geometryFor } from './Keyboard';
 import { Equalizer } from './Equalizer';
 import { KeyActions } from './KeyActions';
 import { HeadsetOptions, KeyboardOptions } from './DeviceOptions';
+import { ColorField, Slider } from './controls';
+import { MousePage } from './MousePage';
 import { ProfileSwitcher, ProfilesPage } from './Profiles';
 import { Home, batteryColor } from './Home';
 import './App.css';
@@ -21,7 +23,7 @@ const SWATCHES: RGB[] = [
   [0, 200, 255], [0, 70, 255], [140, 0, 255], [255, 0, 170], [0, 0, 0],
 ];
 
-type Page = 'home' | 'keyboard' | 'headset' | 'profiles' | 'settings';
+type Page = 'home' | 'keyboard' | 'headset' | 'mouse' | 'profiles' | 'settings';
 type Tool = 'none' | 'paint' | 'erase';
 
 export default function App() {
@@ -138,6 +140,15 @@ export default function App() {
             }
             online={!!status?.headset}
           />
+          {(status?.mouse || page === 'mouse') && (
+            <DeviceTab
+              active={page === 'mouse'}
+              onClick={() => setPage('mouse')}
+              title="Mouse"
+              subtitle={status?.mouse ? `M65 · DPI ${status.mouse.dpi_stage + 1}` : 'desconectado'}
+              online={!!status?.mouse}
+            />
+          )}
         </nav>
         <button className={'nav-link' + (page === 'profiles' ? ' active' : '')} onClick={() => setPage('profiles')}>
           Perfis
@@ -274,6 +285,8 @@ export default function App() {
           </>
         ) : page === 'headset' ? (
           <HeadsetPage key={loadGen} status={status} />
+        ) : page === 'mouse' ? (
+          <MousePage key={loadGen} status={status} />
         ) : page === 'profiles' ? (
           profiles && <ProfilesPage data={profiles} />
         ) : (
@@ -302,30 +315,6 @@ function DeviceTab(p: { active: boolean; onClick: () => void; title: string; sub
         <small>{p.subtitle}</small>
       </span>
     </button>
-  );
-}
-
-function ColorField({ label, value, onChange }: { label: string; value: RGB; onChange: (c: RGB) => void }) {
-  return (
-    <label className="color-field">
-      <input type="color" value={toHex(value)} onChange={(e) => onChange(fromHex(e.target.value))} />
-      <span>
-        {label}
-        <code>{toHex(value).toUpperCase()}</code>
-      </span>
-    </label>
-  );
-}
-
-function Slider(p: { label: string; value: number; min: number; max: number; step: number; unit: string; onChange: (v: number) => void }) {
-  return (
-    <label className="slider">
-      <span>
-        {p.label}
-        <output>{p.unit === '%' ? `${p.value}%` : `${p.value.toFixed(1)}×`}</output>
-      </span>
-      <input type="range" min={p.min} max={p.max} step={p.step} value={p.value} onChange={(e) => p.onChange(Number(e.target.value))} />
-    </label>
   );
 }
 
