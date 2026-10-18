@@ -33,3 +33,16 @@ export function Switch({ on, disabled, onClick }: { on: boolean; disabled?: bool
     </button>
   );
 }
+
+/** Underlined tabs for sections inside a page (not for picking a value: use .seg). */
+export function Tabs<T extends string>(p: { value: T; options: [T, string][]; onChange: (v: T) => void; label: string }) {
+  return (
+    <div className="tabs" role="tablist" aria-label={p.label}>
+      {p.options.map(([id, name]) => (
+        <button key={id} role="tab" aria-selected={p.value === id} className={p.value === id ? 'on' : ''} onClick={() => p.onChange(id)}>
+          {name}
+        </button>
+      ))}
+    </div>
+  );
+}

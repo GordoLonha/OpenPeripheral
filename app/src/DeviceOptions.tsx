@@ -18,8 +18,8 @@ export function KeyboardOptions({ status }: { status: Status | null }) {
     { key: 'lock_shift_tab', label: 'Shift+Tab' },
   ] as const;
   return (
-    <section className="settings device-options">
-      <div className="panel setting">
+    <section className="list">
+      <div className="list-row">
         <div>
           <strong>Win Lock</strong>
           <p className="muted">
@@ -37,7 +37,7 @@ export function KeyboardOptions({ status }: { status: Status | null }) {
         </div>
         <Switch on={winLock} disabled={!s} onClick={() => patch({ win_lock: !winLock })} />
       </div>
-      <div className="panel setting">
+      <div className="list-row">
         <div>
           <strong>Taxa de polling</strong>
           <p className="muted">Com que frequência o teclado envia as teclas. Ao trocar, ele se reconecta por um instante.</p>
@@ -60,8 +60,8 @@ export function HeadsetOptions({ status }: { status: Status | null }) {
   const hs = status?.headset;
   const muted = hs?.mic_muted;
   return (
-    <section className="settings device-options">
-      <div className="panel setting">
+    <section className="list">
+      <div className="list-row">
         <div>
           <strong>Microfone</strong>
           <p className="muted">
@@ -69,14 +69,14 @@ export function HeadsetOptions({ status }: { status: Status | null }) {
           </p>
         </div>
       </div>
-      <div className="panel setting">
+      <div className="list-row">
         <div>
           <strong>Mutar o microfone do sistema junto</strong>
           <p className="muted">Ao levantar a haste, o microfone padrão do sistema também fica mudo.</p>
         </div>
         <Switch on={!!s?.mic_sync} disabled={!s} onClick={() => patch({ mic_sync: !s?.mic_sync })} />
       </div>
-      <div className="panel setting">
+      <div className="list-row">
         <div>
           <strong>Desligar sozinho</strong>
           <p className="muted">Depois de quanto tempo parado o fone se desliga para poupar bateria.</p>
@@ -96,14 +96,6 @@ export function HeadsetOptions({ status }: { status: Status | null }) {
           </select>
         </label>
       </div>
-      {hs?.firmware && (
-        <div className="panel setting">
-          <div>
-            <strong>Firmware do fone</strong>
-            <p className="muted">{hs.firmware}</p>
-          </div>
-        </div>
-      )}
     </section>
   );
 }

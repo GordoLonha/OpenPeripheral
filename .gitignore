@@ -10,3 +10,6 @@ dumps/
 
 # personal restore guide (NAS paths, local machine setup)
 RESTORE.md
+
+# Claude Code session worktrees (local only)
+.claude/worktrees/

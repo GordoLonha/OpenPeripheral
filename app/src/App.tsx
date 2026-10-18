@@ -4,7 +4,8 @@ import { Keyboard, geometryFor } from './Keyboard';
 import { Equalizer } from './Equalizer';
 import { KeyActions } from './KeyActions';
 import { HeadsetOptions, KeyboardOptions } from './DeviceOptions';
-import { ColorField, Slider } from './controls';
+import { ColorField, Slider, Switch, Tabs } from './controls';
+import { Icon, type IconName } from './icons';
 import { MousePage } from './MousePage';
 import { ProfileSwitcher, ProfilesPage } from './Profiles';
 import { Home, batteryColor } from './Home';
@@ -34,7 +35,7 @@ export default function App() {
   const [page, setPage] = useState<Page>('home');
   const [tool, setTool] = useState<Tool>('none');
   const [brush, setBrush] = useState<RGB>([255, 0, 0]);
-  const [kbTab, setKbTab] = useState<'light' | 'keys'>('light');
+  const [kbTab, setKbTab] = useState<'light' | 'keys' | 'settings'>('light');
   const [bindings, setBindings] = useState<Bindings>({});
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [pickedKey, setPickedKey] = useState<string | null>(null);
@@ -116,22 +117,23 @@ export default function App() {
           OpenPeripheral
         </div>
         {profiles && <ProfileSwitcher data={profiles} onManage={() => setPage('profiles')} />}
-        <button className={'nav-link' + (page === 'home' ? ' active' : '')} onClick={() => setPage('home')}>
-          Início
-        </button>
-        <nav>
-          <DeviceTab
+        <nav className="nav-group" aria-label="Principal">
+          <NavItem icon="home" label="Início" active={page === 'home'} onClick={() => setPage('home')} />
+        </nav>
+        <nav className="nav-group" aria-label="Dispositivos">
+          <div className="nav-label">Dispositivos</div>
+          <NavItem
+            icon="keyboard"
+            label="Teclado"
+            sub={status?.keyboard ? `K70 MK.2 LP · fw ${status.keyboard.firmware}` : 'desconectado'}
+            online={!!status?.keyboard}
             active={page === 'keyboard'}
             onClick={() => setPage('keyboard')}
-            title="Teclado"
-            subtitle={status?.keyboard ? `K70 MK.2 LP · fw ${status.keyboard.firmware}` : 'desconectado'}
-            online={!!status?.keyboard}
           />
-          <DeviceTab
-            active={page === 'headset'}
-            onClick={() => setPage('headset')}
-            title="Headset"
-            subtitle={
+          <NavItem
+            icon="headset"
+            label="Headset"
+            sub={
               status?.headset
                 ? status.headset.battery != null
                   ? `HS80 · ${status.headset.battery.toFixed(0)}%${status.headset.charging ? ' · carregando' : ''}`
@@ -139,27 +141,32 @@ export default function App() {
                 : 'desconectado'
             }
             online={!!status?.headset}
+            active={page === 'headset'}
+            onClick={() => setPage('headset')}
           />
           {(status?.mouse || page === 'mouse') && (
-            <DeviceTab
+            <NavItem
+              icon="mouse"
+              label="Mouse"
+              sub={status?.mouse ? `M65 · DPI ${status.mouse.dpi_stage + 1}` : 'desconectado'}
+              online={!!status?.mouse}
               active={page === 'mouse'}
               onClick={() => setPage('mouse')}
-              title="Mouse"
-              subtitle={status?.mouse ? `M65 · DPI ${status.mouse.dpi_stage + 1}` : 'desconectado'}
-              online={!!status?.mouse}
             />
           )}
         </nav>
-        <button className={'nav-link' + (page === 'profiles' ? ' active' : '')} onClick={() => setPage('profiles')}>
-          Perfis
-        </button>
-        <button className={'nav-link' + (page === 'settings' ? ' active' : '')} onClick={() => setPage('settings')}>
-          Configurações
-        </button>
-        <footer className="sidebar-foot">Fechar a janela mantém as luzes ativas pela bandeja.</footer>
+        <nav className="nav-group" aria-label="Geral">
+          <NavItem icon="layers" label="Perfis" active={page === 'profiles'} onClick={() => setPage('profiles')} />
+          <NavItem icon="settings" label="Configurações" active={page === 'settings'} onClick={() => setPage('settings')} />
+        </nav>
+        <footer className="sidebar-foot">
+          <span>Fechar a janela mantém as luzes pela bandeja.</span>
+          <span>Versão {__APP_VERSION__}</span>
+        </footer>
       </aside>
 
       <main className="main">
+        <div className="page">
         {status?.icue_running && (
           <div className="banner" role="status">
             O iCUE está aberto e controla o teclado. Feche-o (bandeja → Sair) para o OpenPeripheral assumir.
@@ -168,120 +175,129 @@ export default function App() {
 
         {page === 'home' ? (
           <Home status={status} profiles={profiles} onOpen={setPage} onScene={(patch) => update({ ...patch, painted: {} })} />
-        ) : page === 'keyboard' && kbTab === 'keys' ? (
-          <>
-            <header className="page-head">
-              <div>
-                <h1>Teclas</h1>
-                <p className="muted">Troque o que cada tecla faz. Funciona em qualquer programa, sem o iCUE.</p>
-              </div>
-              <TabSwitch tab={kbTab} onTab={setKbTab} />
-            </header>
-            <section className="stage">
-              <Keyboard
-                lighting={lighting}
-                ledmap={ledmap}
-                painting={false}
-                onSelectKey={setPickedKey}
-                selectedKey={selectedKey}
-                marked={new Set(Object.keys(bindings))}
-              />
-            </section>
-            {(
-              <KeyActions
-                // Re-mount once saved bindings arrive so the list starts from them.
-                key={loadGen}
-                bindings={bindings}
-                onChange={changeBindings}
-                pickedKey={pickedKey}
-                onPickedKeyHandled={() => setPickedKey(null)}
-                keymap={keymap}
-                onSelectedKeyChange={setSelectedKey}
-                profiles={profiles?.profiles ?? []}
-              />
-            )}
-            <KeyboardOptions status={status} />
-          </>
         ) : page === 'keyboard' ? (
           <>
             <header className="page-head">
               <div>
-                <h1>Iluminação</h1>
-                <p className="muted">{fx.hint}</p>
+                <h1>Teclado</h1>
+                <p className="page-sub">
+                  {status?.keyboard ? `K70 RGB MK.2 Low Profile · firmware ${status.keyboard.firmware}` : 'K70 desconectado'}
+                </p>
               </div>
-              <TabSwitch tab={kbTab} onTab={setKbTab} />
-              <div className="seg" role="group" aria-label="Ferramenta">
-                <button className={tool === 'none' ? 'on' : ''} onClick={() => setTool('none')}>Visualizar</button>
-                <button className={tool === 'paint' ? 'on' : ''} onClick={() => setTool('paint')}>Pintar teclas</button>
-                <button className={tool === 'erase' ? 'on' : ''} onClick={() => setTool('erase')}>Borracha</button>
-              </div>
+              <Tabs
+                label="Seção do teclado"
+                value={kbTab}
+                onChange={setKbTab}
+                options={[['light', 'Iluminação'], ['keys', 'Teclas'], ['settings', 'Ajustes']]}
+              />
             </header>
 
-            <section className="stage">
-              <Keyboard lighting={lighting} ledmap={ledmap} painting={tool !== 'none'} onPaint={paintSlot} />
-            </section>
+            {kbTab === 'keys' ? (
+              <>
+                <section className="stage">
+                  <div className="stage-bar">
+                    <p className="muted">Clique numa tecla do desenho para escolher o que ela faz. Funciona em qualquer programa.</p>
+                  </div>
+                  <Keyboard
+                    lighting={lighting}
+                    ledmap={ledmap}
+                    painting={false}
+                    onSelectKey={setPickedKey}
+                    selectedKey={selectedKey}
+                    marked={new Set(Object.keys(bindings))}
+                  />
+                </section>
+                <KeyActions
+                  // Re-mount once saved bindings arrive so the list starts from them.
+                  key={loadGen}
+                  bindings={bindings}
+                  onChange={changeBindings}
+                  pickedKey={pickedKey}
+                  onPickedKeyHandled={() => setPickedKey(null)}
+                  keymap={keymap}
+                  onSelectedKeyChange={setSelectedKey}
+                  profiles={profiles?.profiles ?? []}
+                />
+              </>
+            ) : kbTab === 'settings' ? (
+              <KeyboardOptions status={status} />
+            ) : (
+              <>
+                <section className="stage">
+                  <div className="stage-bar">
+                    <p className="muted">{tool === 'none' ? fx.hint : tool === 'paint' ? 'Clique ou arraste sobre as teclas para pintar.' : 'Clique ou arraste para devolver as teclas ao efeito.'}</p>
+                    <div className="seg" role="group" aria-label="Ferramenta">
+                      <button className={tool === 'none' ? 'on' : ''} onClick={() => setTool('none')}>Visualizar</button>
+                      <button className={tool === 'paint' ? 'on' : ''} onClick={() => setTool('paint')}>Pintar teclas</button>
+                      <button className={tool === 'erase' ? 'on' : ''} onClick={() => setTool('erase')}>Borracha</button>
+                    </div>
+                  </div>
+                  <Keyboard lighting={lighting} ledmap={ledmap} painting={tool !== 'none'} onPaint={paintSlot} />
+                </section>
 
-            <section className="controls">
-              {tool === 'none' ? (
-                <>
-                  <div className="panel">
-                    <h2>Efeito</h2>
-                    <div className="chips">
-                      {EFFECTS.map((e) => (
-                        <button key={e.id} className={'chip' + (e.id === lighting.effect ? ' on' : '')} onClick={() => update({ effect: e.id })}>
-                          {e.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="panel">
-                    <h2>Cores</h2>
-                    <div className="colors">
-                      {lighting.effect !== 'rainbow' && (
-                        <ColorField label={fx.two ? (lighting.effect === 'reactive' ? 'Ao apertar' : 'Cor 1') : 'Cor'} value={lighting.color} onChange={(c) => update({ color: c })} />
+                <section className="controls">
+                  {tool === 'none' ? (
+                    <>
+                      <div className="panel">
+                        <h2>Efeito</h2>
+                        <div className="chips">
+                          {EFFECTS.map((e) => (
+                            <button key={e.id} className={'chip' + (e.id === lighting.effect ? ' on' : '')} onClick={() => update({ effect: e.id })}>
+                              {e.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="panel">
+                        <h2>Cores</h2>
+                        <div className="colors">
+                          {lighting.effect !== 'rainbow' && (
+                            <ColorField label={fx.two ? (lighting.effect === 'reactive' ? 'Ao apertar' : 'Cor 1') : 'Cor'} value={lighting.color} onChange={(c) => update({ color: c })} />
+                          )}
+                          {fx.two && (
+                            <ColorField label={lighting.effect === 'reactive' ? 'Fundo' : 'Cor 2'} value={lighting.color2} onChange={(c) => update({ color2: c })} />
+                          )}
+                          {lighting.effect === 'rainbow' && <p className="muted">O arco-íris usa todas as cores.</p>}
+                        </div>
+                      </div>
+                      <div className="panel">
+                        <h2>Ajustes</h2>
+                        <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
+                        {lighting.effect !== 'static' && (
+                          <Slider label="Velocidade" value={lighting.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => update({ speed: v })} />
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="panel wide">
+                      <h2>{tool === 'paint' ? 'Cor do pincel' : 'Borracha'}</h2>
+                      <p className="muted">
+                        {tool === 'paint'
+                          ? 'As teclas pintadas ficam por cima do efeito.'
+                          : 'As teclas apagadas voltam a mostrar o efeito.'}
+                      </p>
+                      {tool === 'paint' && (
+                        <div className="swatches">
+                          {SWATCHES.map((s) => (
+                            <button
+                              key={toHex(s)}
+                              className={'swatch' + (toHex(s) === toHex(brush) ? ' on' : '')}
+                              style={{ background: toHex(s) }}
+                              aria-label={toHex(s)}
+                              onClick={() => setBrush(s)}
+                            />
+                          ))}
+                          <ColorField label="Outra" value={brush} onChange={setBrush} />
+                        </div>
                       )}
-                      {fx.two && (
-                        <ColorField label={lighting.effect === 'reactive' ? 'Fundo' : 'Cor 2'} value={lighting.color2} onChange={(c) => update({ color2: c })} />
-                      )}
-                      {lighting.effect === 'rainbow' && <p className="muted">O arco-íris usa todas as cores.</p>}
-                    </div>
-                  </div>
-                  <div className="panel">
-                    <h2>Ajustes</h2>
-                    <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
-                    {lighting.effect !== 'static' && (
-                      <Slider label="Velocidade" value={lighting.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => update({ speed: v })} />
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="panel wide">
-                  <h2>{tool === 'paint' ? 'Pintar teclas' : 'Borracha'}</h2>
-                  <p className="muted">
-                    {tool === 'paint'
-                      ? 'Clique ou arraste sobre as teclas. As teclas pintadas ficam por cima do efeito.'
-                      : 'Clique ou arraste para devolver as teclas ao efeito.'}
-                  </p>
-                  {tool === 'paint' && (
-                    <div className="swatches">
-                      {SWATCHES.map((s) => (
-                        <button
-                          key={toHex(s)}
-                          className={'swatch' + (toHex(s) === toHex(brush) ? ' on' : '')}
-                          style={{ background: toHex(s) }}
-                          aria-label={toHex(s)}
-                          onClick={() => setBrush(s)}
-                        />
-                      ))}
-                      <ColorField label="Outra" value={brush} onChange={setBrush} />
+                      <button className="ghost" disabled={!paintedCount} onClick={() => update({ painted: {} })}>
+                        Limpar pintura ({paintedCount})
+                      </button>
                     </div>
                   )}
-                  <button className="ghost" disabled={!paintedCount} onClick={() => update({ painted: {} })}>
-                    Limpar pintura ({paintedCount})
-                  </button>
-                </div>
-              )}
-            </section>
+                </section>
+              </>
+            )}
           </>
         ) : page === 'headset' ? (
           <HeadsetPage key={loadGen} status={status} />
@@ -292,28 +308,23 @@ export default function App() {
         ) : (
           <SettingsPage />
         )}
+        </div>
       </main>
     </div>
   );
 }
 
-function TabSwitch({ tab, onTab }: { tab: 'light' | 'keys'; onTab: (t: 'light' | 'keys') => void }) {
+function NavItem(p: { icon: IconName; label: string; sub?: string; online?: boolean; active: boolean; onClick: () => void }) {
   return (
-    <div className="seg big" role="tablist" aria-label="Seção do teclado">
-      <button role="tab" aria-selected={tab === 'light'} className={tab === 'light' ? 'on' : ''} onClick={() => onTab('light')}>Iluminação</button>
-      <button role="tab" aria-selected={tab === 'keys'} className={tab === 'keys' ? 'on' : ''} onClick={() => onTab('keys')}>Teclas</button>
-    </div>
-  );
-}
-
-function DeviceTab(p: { active: boolean; onClick: () => void; title: string; subtitle: string; online: boolean }) {
-  return (
-    <button className={'device' + (p.active ? ' active' : '')} onClick={p.onClick}>
-      <span className={'dot' + (p.online ? ' online' : '')} aria-hidden />
-      <span>
-        <strong>{p.title}</strong>
-        <small>{p.subtitle}</small>
+    <button className={'nav-item' + (p.active ? ' active' : '')} aria-current={p.active ? 'page' : undefined} onClick={p.onClick}>
+      <span className="ico">
+        <Icon name={p.icon} size={18} />
       </span>
+      <span>
+        {p.sub ? <strong>{p.label}</strong> : p.label}
+        {p.sub && <small>{p.sub}</small>}
+      </span>
+      {p.online !== undefined && <span className={'dot' + (p.online ? ' online' : '')} aria-label={p.online ? 'conectado' : 'desconectado'} />}
     </button>
   );
 }
@@ -339,46 +350,30 @@ function SettingsPage() {
       <header className="page-head">
         <div>
           <h1>Configurações</h1>
-          <p className="muted">Preferências do OpenPeripheral</p>
+          <p className="page-sub">Preferências do OpenPeripheral</p>
         </div>
       </header>
-      <section className="settings">
-        <div className="panel setting">
+      <section className="list">
+        <div className="list-row">
           <div>
             <strong>Iniciar com o sistema</strong>
-            <p className="muted">Abre minimizado na bandeja e aplica a iluminação ao ligar o PC.</p>
+            <p>Abre minimizado na bandeja e aplica a iluminação ao ligar o PC.</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={!!autostart}
-            className={'switch' + (autostart ? ' on' : '')}
-            disabled={autostart === null}
-            onClick={toggle}
-          >
-            <span />
-          </button>
+          <Switch on={!!autostart} disabled={autostart === null} onClick={toggle} />
         </div>
-        <div className="panel setting">
+        <div className="list-row">
           <div>
             <strong>Bateria do fone na bandeja</strong>
-            <p className="muted">Ícone colorido perto do relógio: verde, amarelo, vermelho, azul com raio ao carregar.</p>
+            <p>Ícone colorido perto do relógio: verde, amarelo, vermelho; azul com raio ao carregar.</p>
           </div>
-          <button
-            role="switch"
-            aria-checked={!!appSettings?.battery_tray}
-            className={'switch' + (appSettings?.battery_tray ? ' on' : '')}
-            disabled={!appSettings}
-            onClick={toggleTray}
-          >
-            <span />
-          </button>
+          <Switch on={!!appSettings?.battery_tray} disabled={!appSettings} onClick={toggleTray} />
         </div>
-        <div className="panel setting">
+      </section>
+      <section className="list">
+        <div className="list-row">
           <div>
-            <strong>Sobre</strong>
-            <p className="muted">
-              OpenPeripheral 0.2 — drivers abertos em espaço de usuário (sem driver de kernel). Não é afiliado à Corsair.
-            </p>
+            <strong>OpenPeripheral {__APP_VERSION__}</strong>
+            <p>Drivers abertos em espaço de usuário, sem driver de kernel. Licença GPL-3.0. Não é afiliado à Corsair.</p>
           </div>
         </div>
       </section>
@@ -395,10 +390,11 @@ function HeadsetPage({ status }: { status: Status | null }) {
       <header className="page-head">
         <div>
           <h1>Headset</h1>
-          <p className="muted">{hs ? hs.name : 'Receptor não encontrado'}</p>
+          <p className="page-sub">{hs ? `${hs.name}${hs.firmware ? ` · firmware ${hs.firmware}` : ''}` : 'Receptor não encontrado'}</p>
         </div>
       </header>
       <section className="headset">
+        <div className="stack">
         <div className="panel battery">
           <svg viewBox="0 0 180 180" width="180" height="180" aria-hidden>
             <circle cx="90" cy="90" r={r} className="ring-bg" />
@@ -415,9 +411,10 @@ function HeadsetPage({ status }: { status: Status | null }) {
             <small>{!hs ? 'sem receptor' : pct == null ? 'headset desligado' : hs.charging ? '⚡ carregando' : 'na bateria'}</small>
           </div>
         </div>
+        <HeadsetOptions status={status} />
+        </div>
         <Equalizer />
       </section>
-      <HeadsetOptions status={status} />
     </>
   );
 }

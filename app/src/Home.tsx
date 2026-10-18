@@ -27,7 +27,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
       <header className="page-head">
         <div>
           <h1>Início</h1>
-          <p className="muted">
+          <p className="page-sub">
             Perfil em uso: <strong className="accent">{active?.name ?? '—'}</strong>
             {profiles?.auto_app && <> · ativado por {profiles.auto_app}</>}
           </p>
@@ -59,7 +59,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
             <div>
               <strong>{status.mouse.name}</strong>
               <small>
-                firmware {status.mouse.firmware} · DPI estágio {status.mouse.dpi_stage + 1} · luz segue o teclado
+                firmware {status.mouse.firmware} · DPI {status.mouse.dpi_stage + 1}
               </small>
             </div>
             <span className="dot online" aria-hidden />
@@ -67,7 +67,7 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
         )}
       </section>
 
-      <section>
+      <section className="home-section">
         <h2>Cenas de iluminação</h2>
         <div className="scenes">
           {SCENES.map((s) => (

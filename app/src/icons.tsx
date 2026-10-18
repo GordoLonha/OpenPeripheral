@@ -12,6 +12,12 @@ const P = {
   profile: 'M4 7h12M13 4l3 3-3 3M20 17H8M11 14l-3 3 3 3',
   close: 'M6 6l12 12M18 6L6 18',
   record: 'M12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10z',
+  home: 'M4 11l8-7 8 7M6 9.5V20h12V9.5M10 20v-6h4v6',
+  keyboard: 'M2 7h20v11H2zM5 10h1M8 10h1M11 10h1M14 10h1M17 10h1M5 13h1M18 13h1M8 13h8M7 16h10',
+  headset: 'M4 14v-2a8 8 0 0 1 16 0v2M4 14h3v6H5a1 1 0 0 1-1-1zM20 14h-3v6h2a1 1 0 0 0 1-1z',
+  layers: 'M12 4l9 5-9 5-9-5zM3 14l9 5 9-5',
+  settings:
+    'M12 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zM12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1',
 };
 
 export type IconName = keyof typeof P;

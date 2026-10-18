@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, fromHex, toHex, type DpiStage, type Effect, type Lighting, type MouseOptions, type Status } from './api';
-import { ColorField, Slider, Switch } from './controls';
+import { ColorField, Slider, Switch, Tabs } from './controls';
 import { POLLING, useAppSettings } from './settings';
 import { MouseButtons } from './MouseButtons';
 
@@ -21,6 +21,7 @@ export function MousePage({ status, profiles }: { status: Status | null; profile
   const [opts, setOpts] = useState<MouseOptions | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const mouse = status?.mouse;
+  const [tab, setTab] = useState<'dpi' | 'buttons' | 'light' | 'settings'>('dpi');
 
   useEffect(() => {
     if (settings && !opts) setOpts(settings.mouse);
@@ -43,62 +44,51 @@ export function MousePage({ status, profiles }: { status: Status | null; profile
       <header className="page-head">
         <div>
           <h1>Mouse</h1>
-          <p className="muted">{mouse ? `${mouse.name} · firmware ${mouse.firmware}` : 'M65 RGB Elite desconectado'}</p>
+          <p className="page-sub">{mouse ? `${mouse.name} · firmware ${mouse.firmware}` : 'M65 RGB Elite desconectado'}</p>
         </div>
+        <Tabs
+          label="Seção do mouse"
+          value={tab}
+          onChange={setTab}
+          options={[['dpi', 'DPI'], ['buttons', 'Botões'], ['light', 'Iluminação'], ['settings', 'Ajustes']]}
+        />
       </header>
 
-      <section className="settings device-options">
-        <div className="panel">
-          <h2>Estágios de DPI</h2>
-          <p className="muted">Os botões atrás da roda trocam o estágio; a cor aparece no LED do DPI. Clique no número para usar um estágio.</p>
+      {tab === 'dpi' && (
+        <section className="card">
+          <div className="card-head">
+            <div>
+              <h2 className="card-title">Estágios de DPI</h2>
+              <p className="muted small">Os botões atrás da roda trocam o estágio, e o LED do DPI mostra a cor dele. Clique no nome para usar um estágio.</p>
+            </div>
+          </div>
           <div className="dpi-stages">
             {opts.stages.map((s, i) => (
               <StageRow
                 key={i}
-                label={`${i + 1}`}
+                label={`Estágio ${i + 1}`}
                 stage={s}
                 active={i === active}
                 onSelect={() => api.setMouseStage(i)}
                 onChange={(n) => setStage(i, n)}
               />
             ))}
-            <StageRow label="Sniper" stage={opts.sniper} hint="enquanto segura o botão vermelho" onChange={(n) => change({ ...opts, sniper: n })} />
+            <StageRow label="Sniper" stage={opts.sniper} hint="Enquanto segura o botão vermelho" onChange={(n) => change({ ...opts, sniper: n })} />
           </div>
-        </div>
+        </section>
+      )}
 
-        <MouseButtons profiles={profiles} />
+      {tab === 'buttons' && <MouseButtons profiles={profiles} />}
 
-        <div className="panel setting">
-          <div>
-            <strong>Taxa de polling</strong>
-            <p className="muted">Com que frequência o mouse envia o movimento. Ao trocar, ele se reconecta por um instante.</p>
-          </div>
-          <div className="seg" role="group" aria-label="Taxa de polling do mouse">
-            {POLLING.map((p) => (
-              <button key={p.ms} className={opts.polling_ms === p.ms ? 'on' : ''} onClick={() => change({ ...opts, polling_ms: p.ms })}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="panel setting">
-          <div>
-            <strong>Correção de ângulo</strong>
-            <p className="muted">Endireita movimentos quase retos (útil para desenhar linhas).</p>
-          </div>
-          <Switch on={opts.angle_snapping} onClick={() => change({ ...opts, angle_snapping: !opts.angle_snapping })} />
-        </div>
-        <div className="panel setting">
-          <div>
-            <strong>Otimização de resposta dos botões</strong>
-            <p className="muted">Cliques registrados mais rápido.</p>
-          </div>
-          <Switch on={opts.button_optimization} onClick={() => change({ ...opts, button_optimization: !opts.button_optimization })} />
-        </div>
-
-        <div className="panel">
-          <div className="setting">
-            <h2>Iluminação</h2>
+      {tab === 'light' && (
+        <section className="card">
+          <div className="card-head">
+            <div>
+              <h2 className="card-title">Iluminação</h2>
+              <p className="muted small">
+                {opts.lighting.follow_keyboard ? 'Logo e roda usam o mesmo efeito do teclado no perfil em uso.' : 'Cada zona com o seu efeito.'}
+              </p>
+            </div>
             <div className="seg" role="group" aria-label="Iluminação do mouse">
               <button className={opts.lighting.follow_keyboard ? 'on' : ''} onClick={() => change({ ...opts, lighting: { ...opts.lighting, follow_keyboard: true } })}>
                 Seguir o teclado
@@ -108,16 +98,46 @@ export function MousePage({ status, profiles }: { status: Status | null; profile
               </button>
             </div>
           </div>
-          {opts.lighting.follow_keyboard ? (
-            <p className="muted">Logo e roda usam o mesmo efeito do teclado no perfil em uso.</p>
-          ) : (
+          {!opts.lighting.follow_keyboard && (
             <div className="zones">
               <ZoneEditor title="Logo" value={opts.lighting.logo} onChange={(l) => zone('logo', l)} />
               <ZoneEditor title="Roda" value={opts.lighting.wheel} onChange={(l) => zone('wheel', l)} />
             </div>
           )}
-        </div>
-      </section>
+        </section>
+      )}
+
+      {tab === 'settings' && (
+        <section className="list">
+          <div className="list-row">
+            <div>
+              <strong>Taxa de polling</strong>
+              <p>Com que frequência o mouse envia o movimento. Ao trocar, ele se reconecta por um instante.</p>
+            </div>
+            <div className="seg" role="group" aria-label="Taxa de polling do mouse">
+              {POLLING.map((p) => (
+                <button key={p.ms} className={opts.polling_ms === p.ms ? 'on' : ''} onClick={() => change({ ...opts, polling_ms: p.ms })}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="list-row">
+            <div>
+              <strong>Correção de ângulo</strong>
+              <p>Endireita movimentos quase retos (útil para desenhar linhas).</p>
+            </div>
+            <Switch on={opts.angle_snapping} onClick={() => change({ ...opts, angle_snapping: !opts.angle_snapping })} />
+          </div>
+          <div className="list-row">
+            <div>
+              <strong>Otimização de resposta dos botões</strong>
+              <p>Cliques registrados mais rápido.</p>
+            </div>
+            <Switch on={opts.button_optimization} onClick={() => change({ ...opts, button_optimization: !opts.button_optimization })} />
+          </div>
+        </section>
+      )}
     </>
   );
 }
@@ -132,6 +152,7 @@ function StageRow(p: { label: string; stage: DpiStage; active?: boolean; hint?: 
       {p.onSelect ? (
         <button className="dpi-label" title="Usar este estágio" onClick={p.onSelect}>
           {p.label}
+          {p.active && <span className="badge">em uso</span>}
         </button>
       ) : (
         <span className="dpi-label" title={p.hint}>
@@ -163,7 +184,7 @@ function StageRow(p: { label: string; stage: DpiStage; active?: boolean; hint?: 
         />
         X/Y
       </label>
-      <input type="color" className="dpi-color" aria-label={`Cor ${p.label}`} value={toHex(p.stage.color)} onChange={(e) => p.onChange({ ...p.stage, color: fromHex(e.target.value) })} />
+      <input type="color" className="color-dot" aria-label={`Cor ${p.label}`} value={toHex(p.stage.color)} onChange={(e) => p.onChange({ ...p.stage, color: fromHex(e.target.value) })} />
     </div>
   );
 }
@@ -172,7 +193,7 @@ function ZoneEditor({ title, value, onChange }: { title: string; value: Lighting
   const fx = ZONE_EFFECTS.find((e) => e.id === value.effect) ?? ZONE_EFFECTS[0];
   const set = (p: Partial<Lighting>) => onChange({ ...value, ...p });
   return (
-    <div className="zone">
+    <div className="zone panel">
       <h3>{title}</h3>
       <div className="chips">
         {ZONE_EFFECTS.map((e) => (

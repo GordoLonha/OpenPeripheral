@@ -214,6 +214,7 @@ export function KeyActions({ bindings, onChange, pickedKey, onPickedKeyHandled, 
         {items.length === 0 && <p className="muted small">Clique em + para criar a primeira.</p>}
       </div>
 
+      <div className="stack">
       {/* 2. Type */}
       <div className={'panel col' + (current ? '' : ' dim')}>
         <h3>Tipo de atribuição</h3>
@@ -254,6 +255,8 @@ export function KeyActions({ bindings, onChange, pickedKey, onPickedKeyHandled, 
             ? 'Aperte a tecla no K70…'
             : 'Clique numa tecla do desenho acima, ou clique aqui e aperte a tecla no teclado.'}
         </p>
+      </div>
+
       </div>
 
       {/* 4. Details */}

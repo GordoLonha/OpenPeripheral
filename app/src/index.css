@@ -1,20 +1,41 @@
 :root {
-  --bg: #0b0d12;
-  --panel: #12161e;
-  --panel-2: #181d27;
-  --line: #232a37;
+  /* Surfaces */
+  --bg: #0a0c11;
+  --panel: #11151d;
+  --panel-2: #171c26;
+  --panel-3: #1d2330;
+  --line: #222936;
+  --line-strong: #323b4c;
+  /* Text */
   --text: #e8ecf3;
   --muted: #8a94a7;
+  --faint: #5c6578;
+  /* Accent and status */
   --accent: #39d0f0;
   --accent-ink: #04222b;
+  --accent-soft: rgba(57, 208, 240, 0.12);
   --warn: #f5b84a;
   --danger: #ff5d6c;
   --ok: #3ddc84;
+  /* Keyboard drawing */
   --cap: #191d25;
   --cap-edge: #2a3140;
-  --radius: 12px;
+  /* Spacing and shape */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 16px;
+  --radius: var(--r);
+  --content: 1240px;
+  --control-h: 34px;
+
   color-scheme: dark;
-  font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'Ubuntu', sans-serif;
+  font-family: 'Segoe UI Variable Text', 'Segoe UI', 'Inter', system-ui, -apple-system, 'Ubuntu', 'Noto Sans', sans-serif;
   font-size: 14px;
   line-height: 1.45;
   color: var(--text);
@@ -26,7 +47,18 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); overflow: hidden; user-select: none; }
 button { font: inherit; color: inherit; cursor: pointer; }
-h1, h2 { margin: 0; font-weight: 600; }
-h1 { font-size: 22px; letter-spacing: -0.01em; }
-h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; }
+input, select, textarea { font: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+h1 { font-size: 24px; letter-spacing: -0.015em; line-height: 1.2; }
+h2 { font-size: 15px; }
+h3 { font-size: 14px; }
+p { margin: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-soft); }
+.boot { display: grid; place-items: center; height: 100%; color: var(--muted); }
+
+/* Thin, dark scrollbars (WebKitGTK and WebView2) */
+* { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
