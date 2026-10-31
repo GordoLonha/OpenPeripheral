@@ -314,11 +314,15 @@ pub struct Injector {
     enigo: Option<Out>,
     /// Running macro per key/button id; the flag is cleared to stop it.
     running: HashMap<String, Arc<AtomicBool>>,
+    /// Key, shortcut or mouse-button action held down per key/button id. Released from
+    /// here, not from the current bindings: those may have changed (profile switch)
+    /// while the key was down, and the OS would keep the old key pressed.
+    held: HashMap<String, Action>,
 }
 
 impl Injector {
     pub fn new() -> Self {
-        Self { enigo: new_out(), running: HashMap::new() }
+        Self { enigo: new_out(), running: HashMap::new(), held: HashMap::new() }
     }
 
     fn macro_running(&self, id: &str) -> bool {
@@ -356,10 +360,35 @@ impl Injector {
         }
     }
 
-    /// Stop every macro (profile switch, bindings changed, shutdown).
+    /// Stop every macro and let go of every held key (profile switch, bindings changed).
     pub fn stop_all(&mut self) {
         for (_, f) in self.running.drain() {
             f.store(false, Ordering::Relaxed);
+        }
+        self.release_where(|_| true);
+    }
+
+    /// Let go of the keys held by ids matching `which` (a device went away).
+    pub fn release_where(&mut self, which: impl Fn(&str) -> bool) {
+        let ids: Vec<String> = self.held.keys().filter(|id| which(id)).cloned().collect();
+        for id in ids {
+            self.release_held(&id);
+        }
+    }
+
+    fn release_held(&mut self, id: &str) {
+        match self.held.remove(id) {
+            Some(Action::Key { key }) => {
+                if let Some(k) = key_from_name(&key) {
+                    self.keys(&[k], Direction::Release);
+                }
+            }
+            Some(Action::Shortcut { keys }) => {
+                let ks: Vec<Key> = keys.iter().filter_map(|k| key_from_name(k)).collect();
+                self.keys(&ks, Direction::Release);
+            }
+            Some(Action::Mouse { button }) => self.mouse(&button, Direction::Release),
+            _ => {}
         }
     }
 
@@ -374,6 +403,11 @@ impl Injector {
 
     /// `id` names the physical key/button, so its macro can be stopped later.
     pub fn press(&mut self, id: &str, action: &Action) {
+        if matches!(action, Action::Key { .. } | Action::Shortcut { .. } | Action::Mouse { .. }) {
+            // A press without its release (key bound twice in a row): let go first.
+            self.release_held(id);
+            self.held.insert(id.to_string(), action.clone());
+        }
         match action {
             Action::Disabled => {}
             Action::Key { key } => {
@@ -427,23 +461,13 @@ impl Injector {
     }
 
     pub fn release(&mut self, id: &str, action: &Action) {
-        match action {
-            Action::Macro { steps, options: o } => match o.trigger {
+        self.release_held(id);
+        if let Action::Macro { steps, options: o } = action {
+            match o.trigger {
                 Trigger::Release => self.fire_macro(id, steps, o),
                 Trigger::Hold => self.stop_macro(id),
                 _ => {}
-            },
-            Action::Key { key } => {
-                if let Some(k) = key_from_name(key) {
-                    self.keys(&[k], Direction::Release);
-                }
             }
-            Action::Shortcut { keys } => {
-                let ks: Vec<Key> = keys.iter().filter_map(|k| key_from_name(k)).collect();
-                self.keys(&ks, Direction::Release);
-            }
-            Action::Mouse { button } => self.mouse(button, Direction::Release),
-            _ => {}
         }
     }
 }
@@ -465,7 +489,123 @@ pub(crate) fn launch(target: &str) {
     }
     #[cfg(not(windows))]
     {
-        let _ = std::process::Command::new("xdg-open").arg(target).spawn();
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/".into());
+        let Some((program, args)) = unix_command(target, &home, in_path) else { return };
+        let child = std::process::Command::new(&program)
+            .args(&args)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+        // Reap it, or every launch stays a zombie until the app quits.
+        if let Ok(mut child) = child {
+            std::thread::spawn(move || child.wait());
+        }
+    }
+}
+
+/// What to run on Linux for a launch target.
+///
+/// The presets in the UI are named after Windows programs (`calc`, `notepad`,
+/// `explorer`, `ms-settings:`) so profiles move between systems; here they become the
+/// desktop's own calculator, text editor, file manager and settings. Otherwise a
+/// program on the PATH runs with its arguments, and anything else (URL, file,
+/// folder) goes to `xdg-open`, which cannot start programs by itself.
+#[cfg(not(windows))]
+fn unix_command(target: &str, home: &str, exists: impl Fn(&str) -> bool) -> Option<(String, Vec<String>)> {
+    let first = |names: &[&str]| names.iter().find(|n| exists(n)).map(|n| (n.to_string(), vec![]));
+    match target.to_ascii_lowercase().as_str() {
+        "calc" | "calc.exe" => {
+            return first(&["gnome-calculator", "kcalc", "qalculate-gtk", "galculator", "mate-calc", "xcalc"]);
+        }
+        "notepad" | "notepad.exe" => {
+            return first(&["gnome-text-editor", "kwrite", "kate", "gedit", "mousepad", "xed", "pluma", "featherpad"]);
+        }
+        "ms-settings:" => {
+            return first(&["systemsettings", "gnome-control-center", "xfce4-settings-manager", "cinnamon-settings", "mate-control-center"]);
+        }
+        "explorer" | "explorer.exe" => return Some(("xdg-open".into(), vec![home.to_string()])),
+        _ => {}
+    }
+    // The first word decides: a program (on the PATH, or a path to an executable) runs
+    // with the rest as arguments. A URL has a '/' and is not an executable file.
+    let mut words = target.split_whitespace();
+    if let Some(program) = words.next() {
+        let runnable = if program.contains('/') { is_executable(std::path::Path::new(program)) } else { exists(program) };
+        if runnable {
+            return Some((program.to_string(), words.map(str::to_string).collect()));
+        }
+    }
+    Some(("xdg-open".into(), vec![target.to_string()]))
+}
+
+#[cfg(not(windows))]
+fn is_executable(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    path.metadata().is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(windows))]
+fn in_path(program: &str) -> bool {
+    std::env::var_os("PATH").is_some_and(|paths| std::env::split_paths(&paths).any(|dir| is_executable(&dir.join(program))))
+}
+
+#[cfg(test)]
+mod held_tests {
+    use super::*;
+
+    fn injector() -> Injector {
+        Injector { enigo: None, running: HashMap::new(), held: HashMap::new() }
+    }
+
+    #[test]
+    fn release_uses_the_action_that_was_pressed() {
+        let mut i = injector();
+        i.press("k5", &Action::Key { key: "Control".into() });
+        assert!(i.held.contains_key("k5"));
+        // Bindings changed while the key was down: the release still clears what was pressed.
+        i.release("k5", &Action::Disabled);
+        assert!(i.held.is_empty());
+    }
+
+    #[test]
+    fn stop_all_and_device_loss_let_go() {
+        let mut i = injector();
+        i.press("k5", &Action::Shortcut { keys: vec!["Control".into(), "C".into()] });
+        i.press("mback", &Action::Mouse { button: "left".into() });
+        i.press("k6", &Action::Text { text: "x".into() });
+        assert_eq!(i.held.len(), 2, "only keys and buttons stay down");
+        i.release_where(|id| id.starts_with('m'));
+        assert_eq!(i.held.keys().collect::<Vec<_>>(), ["k5"]);
+        i.stop_all();
+        assert!(i.held.is_empty());
+    }
+}
+
+#[cfg(all(test, not(windows)))]
+mod launch_tests {
+    use super::unix_command;
+
+    fn cmd(target: &str, installed: &[&str]) -> Option<(String, Vec<String>)> {
+        unix_command(target, "/home/u", |p| installed.contains(&p))
+    }
+
+    #[test]
+    fn presets_map_to_desktop_programs() {
+        assert_eq!(cmd("calc", &["kcalc"]), Some(("kcalc".into(), vec![])));
+        assert_eq!(cmd("notepad", &["kate", "gedit"]), Some(("kate".into(), vec![])));
+        assert_eq!(cmd("ms-settings:", &["gnome-control-center"]), Some(("gnome-control-center".into(), vec![])));
+        assert_eq!(cmd("explorer", &[]), Some(("xdg-open".into(), vec!["/home/u".into()])));
+        assert_eq!(cmd("calc", &[]), None, "no calculator installed: do nothing");
+    }
+
+    #[test]
+    fn programs_urls_and_files() {
+        assert_eq!(cmd("steam steam://rungameid/730", &["steam"]), Some(("steam".into(), vec!["steam://rungameid/730".into()])));
+        assert_eq!(cmd("https://example.com", &[]), Some(("xdg-open".into(), vec!["https://example.com".into()])));
+        assert_eq!(cmd("mailto:a@b.c", &[]), Some(("xdg-open".into(), vec!["mailto:a@b.c".into()])));
+        assert_eq!(cmd("/home/u/notes.txt", &[]), Some(("xdg-open".into(), vec!["/home/u/notes.txt".into()])));
+        assert_eq!(cmd("/bin/sh -c true", &[]), Some(("/bin/sh".into(), vec!["-c".into(), "true".into()])));
     }
 }
 

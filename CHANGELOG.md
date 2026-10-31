@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+- **Profiles switch by themselves on Linux**: a profile linked to a program now turns on
+  while that program is in front, like on Windows. Works on X11 and, on Wayland, for
+  XWayland windows, which covers games under Proton (link them by the `.exe` name, e.g.
+  `cs2.exe`) and most native games (`cs2`). "Detectar programa" works there too.
+- **Profiles page** in the new look, and deleting a profile asks first.
+- **"Abrir app" key action on Linux**: Calculadora, Editor de texto, Gerenciador de
+  arquivos and Configurações do sistema open the desktop's own programs; a typed program
+  runs with its arguments (`steam steam://rungameid/730`). Before, only links and files
+  opened.
+
+### Fixes
+- A remapped key or mouse button held during a profile switch (or when the device was
+  unplugged) could stay pressed in the system, e.g. Ctrl stuck after alt-tabbing out of
+  a game.
+- A damaged `profiles.json` (power cut while saving) wiped every profile on the next
+  start. Settings files are now saved safely, and a file that cannot be read is kept as
+  `profiles.json.broken-…` instead of being overwritten.
+- The keyboard and mouse no longer drop off and come back twice at login when a polling
+  rate other than 1000 Hz is saved; Win Lock and the DPI stage are set from the start.
+- The Profile key works while a game with its own profile is in front; a profile chosen
+  by hand stays until you leave the game.
+- A key bound to a deleted profile no longer leaves the app stuck on a game's profile.
+- Mouse buttons set to keep their own function (macro with "keep original output") no
+  longer confuse the DPI stage; the same for the K70's Profile, Brightness and Win Lock keys.
+- Windows: the mouse is handed to iCUE when iCUE starts, like the keyboard.
+
 ## 0.4.1 — 2026-10-18
 
 - **Updates from the app**: Configurações → Atualizações looks for a new release on GitHub

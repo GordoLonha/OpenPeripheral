@@ -167,8 +167,10 @@ fn read_headset(hs: &Hs80) -> (Option<f32>, bool) {
 }
 
 /// `on_key` gets the LED slot (= key index) of every key press, for "record key" in the UI.
+/// `initial` commands are handled before the first device scan (saved settings, bindings).
 pub fn spawn(
     lighting: Lighting,
+    initial: Vec<Cmd>,
     on_status: impl Fn(&Status) + Send + 'static,
     on_key: impl Fn(u8) + Send + 'static,
     on_profile: impl Fn(String) + Send + 'static,
@@ -176,6 +178,9 @@ pub fn spawn(
     on_brightness_key: impl Fn() + Send + 'static,
 ) -> Sender<Cmd> {
     let (tx, rx) = mpsc::channel();
+    for cmd in initial {
+        let _ = tx.send(cmd);
+    }
     thread::Builder::new()
         .name("device-engine".into())
         .spawn(move || run(rx, lighting, on_status, on_key, on_profile, on_wheel_click, on_brightness_key))
@@ -487,6 +492,14 @@ fn run(
             if dev.status.icue_running && dev.k70.is_some() {
                 dev.drop_keyboard(); // let iCUE have it; we take it back when it quits
             }
+            if dev.status.icue_running {
+                if let Some(m) = &dev.m65 {
+                    // Same for the mouse, with its buttons and lighting back to normal.
+                    let _ = m.set_button_modes(0);
+                    let _ = m.set_software_mode(false);
+                    dev.drop_mouse();
+                }
+            }
             last_icue = Some(now);
         }
         if last_scan.is_none_or(|t| now - t > RESCAN) {
@@ -538,7 +551,9 @@ fn run(
                                 injector.release(&id, action);
                             }
                         }
-                        let bound = mouse_bindings.keys().fold(0u8, |m, b| m | b);
+                        // Buttons that keep their own function (macro with passthrough) still
+                        // change DPI in the firmware, so the app must keep tracking them.
+                        let bound = mouse_host_only(&mouse_bindings);
                         let (pressed, released) = (pressed & !bound, released & !bound);
                         // Sniper: once the app defines the stages the firmware no
                         // longer slows down by itself, so select the sniper stage
@@ -643,7 +658,7 @@ fn run(
                             // Top-left keys are reported to us only; act on them here
                             // (unless remapped).
                             match i as u8 {
-                                k if bindings.contains_key(&k) => {}
+                                k if bindings.get(&k).is_some_and(|a| !a.passthrough()) => {}
                                 k70::KEY_PROFILE => on_profile("next".into()),
                                 k70::KEY_BRIGHTNESS => on_brightness_key(),
                                 k70::KEY_WINLOCK => {
@@ -691,6 +706,17 @@ fn run(
         }
         if lost {
             dev.drop_keyboard();
+        }
+
+        // A device went away (unplugged, iCUE, polling change) with remapped keys down:
+        // their releases will never come, so let go of them now.
+        if dev.k70.is_none() && !prev_keys.is_empty() {
+            injector.release_where(|id| id.starts_with('k'));
+            prev_keys.clear();
+        }
+        if dev.m65.is_none() && mouse_buttons != 0 {
+            injector.release_where(|id| id.starts_with('m'));
+            mouse_buttons = 0;
         }
 
         if reported.as_ref() != Some(&dev.status) {

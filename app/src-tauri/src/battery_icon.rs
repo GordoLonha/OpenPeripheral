@@ -39,8 +39,7 @@ fn in_bolt(x: f32, y: f32) -> bool {
     const P: [(f32, f32); 6] = [(17.5, 9.0), (10.5, 17.0), (15.0, 17.0), (13.5, 24.0), (21.0, 15.0), (16.5, 15.0)];
     let mut inside = false;
     let mut j = P.len() - 1;
-    for i in 0..P.len() {
-        let (xi, yi) = P[i];
+    for (i, &(xi, yi)) in P.iter().enumerate() {
         let (xj, yj) = P[j];
         if (yi > y) != (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi {
             inside = !inside;

@@ -303,7 +303,7 @@ context.modules = [
         while Instant::now() < deadline {
             let objs = dump();
             if let Some((eq_id, _)) = find_sink(&objs, |n| n == NODE) {
-                if default_sink(&objs).map_or(true, |d| d.contains("HS80")) {
+                if default_sink(&objs).is_none_or(|d| d.contains("HS80")) {
                     set_default(eq_id);
                 }
                 return Ok(());

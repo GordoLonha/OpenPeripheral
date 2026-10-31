@@ -137,5 +137,8 @@ export const api = {
   onEq: (cb: (eq: Eq) => void) => listen<Eq>('eq', (e) => cb(e.payload)),
 };
 
+/** The webview's own OS; for wording that differs between Windows and Linux. */
+export const isWindows = typeof navigator !== 'undefined' && /windows/i.test(navigator.userAgent);
+
 export const toHex = ([r, g, b]: RGB) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
 export const fromHex = (h: string): RGB => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as RGB;
