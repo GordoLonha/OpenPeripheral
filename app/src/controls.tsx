@@ -26,9 +26,9 @@ export function Slider(p: { label: string; value: number; min: number; max: numb
   );
 }
 
-export function Switch({ on, disabled, onClick }: { on: boolean; disabled?: boolean; onClick: () => void }) {
+export function Switch({ on, disabled, label, onClick }: { on: boolean; disabled?: boolean; label?: string; onClick: () => void }) {
   return (
-    <button role="switch" aria-checked={on} className={'switch' + (on ? ' on' : '')} disabled={disabled} onClick={onClick}>
+    <button role="switch" aria-checked={on} aria-label={label} className={'switch' + (on ? ' on' : '')} disabled={disabled} onClick={onClick}>
       <span />
     </button>
   );
