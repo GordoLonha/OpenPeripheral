@@ -85,6 +85,12 @@ if (only) {
   if (!want.includes('mouse')) status.mouse = null;
 }
 
+// Like the backend: every profile change is announced with a 'profile' event.
+function changed() {
+  void emit('profile', { ...profiles, profiles: [...profiles.profiles] });
+  return null;
+}
+
 export function installDevMock() {
   mockIPC(
     (cmd, args) => {
@@ -107,7 +113,24 @@ export function installDevMock() {
         case 'eq_backend': return { kind: 'pipewire', available: true, detail: 'alsa_output.usb-Corsair_HS80' };
         case 'get_autostart': return true;
         case 'foreground_app': return 'cs2';
-        case 'create_profile': return 'novo';
+        case 'select_profile':
+          profiles.selected = profiles.active = a.id as string;
+          profiles.auto_app = null;
+          return changed();
+        case 'create_profile': {
+          const id = (a.name as string).toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'perfil';
+          profiles.profiles = [...profiles.profiles, { id, name: a.name as string, apps: [] }];
+          void changed();
+          return id;
+        }
+        case 'update_profile':
+          profiles.profiles = profiles.profiles.map((p) => (p.id === a.id ? { ...p, name: a.name as string, apps: a.apps as string[] } : p));
+          return changed();
+        case 'delete_profile':
+          if (profiles.profiles.length > 1) profiles.profiles = profiles.profiles.filter((p) => p.id !== a.id);
+          if (!profiles.profiles.some((p) => p.id === profiles.selected)) profiles.selected = profiles.profiles[0].id;
+          if (!profiles.profiles.some((p) => p.id === profiles.active)) profiles.active = profiles.selected;
+          return changed();
         case 'install_kind': return 'package';
         // ?update=1 pretends a newer release is out (Settings → Atualizações).
         case 'plugin:updater|check':
