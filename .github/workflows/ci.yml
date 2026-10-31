@@ -27,8 +27,13 @@ jobs:
       - name: Frontend
         working-directory: app
         run: npm ci && npm run build
+      - name: Frontend lint
+        working-directory: app
+        run: npm run lint
       - name: Tests
         run: cargo test --workspace
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - name: udev rules match the device database
         run: cargo run -q -p opctl -- udev-rules | diff - linux/70-openperipheral.rules
 
