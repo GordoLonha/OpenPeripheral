@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Profiles switch by themselves on Linux**: a profile linked to a program now turns on
+  while that program is in front, like on Windows. Works on X11 and, on Wayland, for
+  XWayland windows, which covers games under Proton (link them by the `.exe` name, e.g.
+  `cs2.exe`) and most native games (`cs2`). "Detectar programa" works there too.
+- **Profiles page** in the new look, and deleting a profile asks first.
+- **"Abrir app" key action on Linux**: Calculadora, Editor de texto, Gerenciador de
+  arquivos and Configurações do sistema open the desktop's own programs; a typed program
+  runs with its arguments (`steam steam://rungameid/730`). Before, only links and files
+  opened.
+
 ## 0.4.1 — 2026-10-18
 
 - **Updates from the app**: Configurações → Atualizações looks for a new release on GitHub
