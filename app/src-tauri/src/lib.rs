@@ -104,12 +104,20 @@ impl AppSettings {
     }
 
     /// Push the device settings to the engine.
+    fn commands(&self) -> Vec<Cmd> {
+        vec![
+            Cmd::SetWinLock(self.win_lock),
+            Cmd::SetKeyboard(self.keyboard()),
+            Cmd::SetHeadset(self.headset()),
+            Cmd::SetMouseStage(self.mouse_stage),
+            Cmd::SetMouse(self.mouse.clone()),
+        ]
+    }
+
     fn apply(&self, engine: &mpsc::Sender<Cmd>) {
-        let _ = engine.send(Cmd::SetWinLock(self.win_lock));
-        let _ = engine.send(Cmd::SetKeyboard(self.keyboard()));
-        let _ = engine.send(Cmd::SetHeadset(self.headset()));
-        let _ = engine.send(Cmd::SetMouseStage(self.mouse_stage));
-        let _ = engine.send(Cmd::SetMouse(self.mouse.clone()));
+        for cmd in self.commands() {
+            let _ = engine.send(cmd);
+        }
     }
 }
 
@@ -126,7 +134,7 @@ struct AppState {
 impl AppState {
     fn save(&self) -> Result<(), String> {
         let json = serde_json::to_string_pretty(&*self.store.lock().unwrap()).map_err(|e| e.to_string())?;
-        fs::write(&self.store_path, json).map_err(|e| e.to_string())
+        write_atomic(&self.store_path, &json).map_err(|e| e.to_string())
     }
 
     fn active_id(&self) -> String {
@@ -356,8 +364,11 @@ fn set_mouse_stage(state: State<AppState>, stage: u8) {
 fn set_app_settings(app: AppHandle, state: State<AppState>, value: AppSettings) -> Result<(), String> {
     let json = serde_json::to_string_pretty(&value).map_err(|e| e.to_string())?;
     value.apply(&state.engine);
-    *state.settings.lock().unwrap() = value;
-    fs::write(&state.settings_path, json).map_err(|e| e.to_string())?;
+    // Write under the lock, or a status update saving the DPI stage can interleave.
+    let mut current = state.settings.lock().unwrap();
+    *current = value;
+    write_atomic(&state.settings_path, &json).map_err(|e| e.to_string())?;
+    drop(current);
     let status = state.status.lock().unwrap().clone();
     update_battery_tray(&app, &status);
     Ok(())
@@ -475,9 +486,38 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+/// Write through a temporary file and a rename, so a crash or power cut mid-write
+/// leaves the old file or the new one, never half of one.
+fn write_atomic(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    let tmp = path.with_extension("json.tmp");
+    let mut f = fs::File::create(&tmp)?;
+    f.write_all(contents.as_bytes())?;
+    f.sync_all()?;
+    fs::rename(&tmp, path)
+}
+
+/// Read a JSON settings file. One that exists but cannot be read (damaged, or from a
+/// newer version) is moved aside as `<name>.broken-<time>` before the caller falls back
+/// to defaults, which would otherwise overwrite it.
+fn read_json<T: serde::de::DeserializeOwned>(path: &std::path::Path) -> Option<T> {
+    let text = fs::read_to_string(path).ok()?;
+    match serde_json::from_str(&text) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            let aside = path.with_file_name(format!("{name}.broken-{secs}"));
+            eprintln!("{}: {e}; kept as {}", path.display(), aside.display());
+            let _ = fs::rename(path, aside);
+            None
+        }
+    }
+}
+
 /// Load profiles.json, or build the first profile from the pre-profile settings files.
 fn load_store(dir: &std::path::Path) -> Store {
-    if let Some(s) = fs::read_to_string(dir.join("profiles.json")).ok().and_then(|s| serde_json::from_str(&s).ok()) {
+    if let Some(s) = read_json(&dir.join("profiles.json")) {
         return s;
     }
     let read = |f: &str| fs::read_to_string(dir.join(f)).ok();
@@ -489,17 +529,20 @@ fn load_store(dir: &std::path::Path) -> Store {
 }
 
 /// Switch to a game's profile while it is in front, back to the selected one after.
+/// Acts when the program in front changes, so a profile picked by hand (Profile key,
+/// tray, sidebar) while a game is in front stays until the user leaves the game.
 fn spawn_auto_switch(app: AppHandle) {
+    let mut last = None::<String>;
     thread::spawn(move || loop {
         thread::sleep(Duration::from_millis(1000));
         let Some(st) = app.try_state::<AppState>() else { continue };
         // Stay on an auto profile while our own window is in front (user is editing it).
         // On Wayland our window is invisible to the X11 lookup, so ask the window too.
-        if app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false) {
-            continue;
-        }
+        // Coming back from it re-checks, as the user may have changed profiles there.
+        let ours = app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false);
         let names = foreground::names();
-        if names.iter().any(|n| n.to_lowercase().starts_with("openperipheral")) {
+        if ours || names.iter().any(|n| n.to_lowercase().starts_with("openperipheral")) {
+            last = None;
             continue;
         }
         let (target, auto) = {
@@ -509,6 +552,10 @@ fn spawn_auto_switch(app: AppHandle) {
                 None => (store.selected.clone(), None),
             }
         };
+        if last.as_ref() == Some(&target) {
+            continue;
+        }
+        last = Some(target.clone());
         if st.active_id() != target {
             activate(&app, &target, auto);
         }
@@ -549,6 +596,13 @@ pub fn run() {
             fs::create_dir_all(&config_dir)?;
             let store = load_store(&config_dir);
             let start = store.get(&store.selected).cloned().unwrap_or_else(|| store.profiles[0].clone());
+            let settings_path = config_dir.join("settings.json");
+            let settings: AppSettings = read_json(&settings_path).unwrap_or_default();
+            // Queued before the engine's first scan: with defaults there, the keyboard and
+            // mouse get the wrong polling rate, drop off the bus, and again for the right one.
+            let mut initial = settings.commands();
+            initial.push(Cmd::SetBindings(to_slots(&start.bindings)));
+            initial.push(Cmd::SetMouseBindings(to_mouse_bits(&start.mouse_bindings)));
 
             let status_handle = app.handle().clone();
             let key_handle = app.handle().clone();
@@ -557,6 +611,7 @@ pub fn run() {
             let bright_handle = app.handle().clone();
             let engine = engine::spawn(
                 start.lighting.clone(),
+                initial,
                 move |status| {
                     if let Some(st) = status_handle.try_state::<AppState>() {
                         *st.status.lock().unwrap() = status.clone();
@@ -566,7 +621,7 @@ pub fn run() {
                         if s.win_lock != status.win_lock || s.mouse_stage != stage {
                             s.win_lock = status.win_lock;
                             s.mouse_stage = stage;
-                            let _ = fs::write(&st.settings_path, serde_json::to_string_pretty(&*s).unwrap_or_default());
+                            let _ = write_atomic(&st.settings_path, &serde_json::to_string_pretty(&*s).unwrap_or_default());
                         }
                     }
                     let _ = status_handle.emit("status", status);
@@ -580,12 +635,16 @@ pub fn run() {
                     let app = profile_handle.clone();
                     thread::spawn(move || {
                         let Some(st) = app.try_state::<AppState>() else { return };
-                        let id = if target == "next" {
-                            st.store.lock().unwrap().next_after(&st.active_id())
-                        } else {
-                            target
-                        };
-                        st.store.lock().unwrap().selected = id.clone();
+                        {
+                            let mut store = st.store.lock().unwrap();
+                            let id = if target == "next" { store.next_after(&st.active_id()) } else { target };
+                            // A key bound to a profile that was deleted since does nothing.
+                            if store.get(&id).is_none() {
+                                return;
+                            }
+                            store.selected = id;
+                        }
+                        let id = st.store.lock().unwrap().selected.clone();
                         let _ = st.save();
                         activate(&app, &id, None);
                     });
@@ -616,13 +675,7 @@ pub fn run() {
                     });
                 },
             );
-            let _ = engine.send(Cmd::SetBindings(to_slots(&start.bindings)));
-            let _ = engine.send(Cmd::SetMouseBindings(to_mouse_bits(&start.mouse_bindings)));
             let _ = eq::apply(&start.eq);
-            let settings_path = config_dir.join("settings.json");
-            let settings: AppSettings =
-                fs::read_to_string(&settings_path).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
-            settings.apply(&engine);
             app.manage(AppState {
                 settings: Mutex::new(settings),
                 settings_path,
@@ -708,4 +761,29 @@ pub fn run() {
             eq::shutdown();
         }
     });
+}
+
+#[cfg(test)]
+mod file_tests {
+    use super::*;
+
+    #[test]
+    fn damaged_profiles_are_kept_aside_not_overwritten() {
+        let dir = std::env::temp_dir().join(format!("op-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("profiles.json");
+        fs::write(&path, "{\"selected\": \"default\", \"profiles\": [").unwrap(); // cut off mid-write
+
+        let store = load_store(&dir);
+        assert_eq!(store.profiles.len(), 1, "falls back to a default profile");
+        assert!(!path.exists());
+        let kept: Vec<_> = fs::read_dir(&dir).unwrap().filter_map(|e| e.ok()).map(|e| e.file_name().into_string().unwrap()).collect();
+        assert!(kept.iter().any(|n| n.starts_with("profiles.json.broken-")), "{kept:?}");
+
+        write_atomic(&path, &serde_json::to_string(&store).unwrap()).unwrap();
+        assert_eq!(read_json::<Store>(&path).unwrap().profiles.len(), 1);
+        assert!(!dir.join("profiles.json.tmp").exists());
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

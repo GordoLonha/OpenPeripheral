@@ -314,11 +314,15 @@ pub struct Injector {
     enigo: Option<Out>,
     /// Running macro per key/button id; the flag is cleared to stop it.
     running: HashMap<String, Arc<AtomicBool>>,
+    /// Key, shortcut or mouse-button action held down per key/button id. Released from
+    /// here, not from the current bindings: those may have changed (profile switch)
+    /// while the key was down, and the OS would keep the old key pressed.
+    held: HashMap<String, Action>,
 }
 
 impl Injector {
     pub fn new() -> Self {
-        Self { enigo: new_out(), running: HashMap::new() }
+        Self { enigo: new_out(), running: HashMap::new(), held: HashMap::new() }
     }
 
     fn macro_running(&self, id: &str) -> bool {
@@ -356,10 +360,35 @@ impl Injector {
         }
     }
 
-    /// Stop every macro (profile switch, bindings changed, shutdown).
+    /// Stop every macro and let go of every held key (profile switch, bindings changed).
     pub fn stop_all(&mut self) {
         for (_, f) in self.running.drain() {
             f.store(false, Ordering::Relaxed);
+        }
+        self.release_where(|_| true);
+    }
+
+    /// Let go of the keys held by ids matching `which` (a device went away).
+    pub fn release_where(&mut self, which: impl Fn(&str) -> bool) {
+        let ids: Vec<String> = self.held.keys().filter(|id| which(id)).cloned().collect();
+        for id in ids {
+            self.release_held(&id);
+        }
+    }
+
+    fn release_held(&mut self, id: &str) {
+        match self.held.remove(id) {
+            Some(Action::Key { key }) => {
+                if let Some(k) = key_from_name(&key) {
+                    self.keys(&[k], Direction::Release);
+                }
+            }
+            Some(Action::Shortcut { keys }) => {
+                let ks: Vec<Key> = keys.iter().filter_map(|k| key_from_name(k)).collect();
+                self.keys(&ks, Direction::Release);
+            }
+            Some(Action::Mouse { button }) => self.mouse(&button, Direction::Release),
+            _ => {}
         }
     }
 
@@ -374,6 +403,11 @@ impl Injector {
 
     /// `id` names the physical key/button, so its macro can be stopped later.
     pub fn press(&mut self, id: &str, action: &Action) {
+        if matches!(action, Action::Key { .. } | Action::Shortcut { .. } | Action::Mouse { .. }) {
+            // A press without its release (key bound twice in a row): let go first.
+            self.release_held(id);
+            self.held.insert(id.to_string(), action.clone());
+        }
         match action {
             Action::Disabled => {}
             Action::Key { key } => {
@@ -427,23 +461,13 @@ impl Injector {
     }
 
     pub fn release(&mut self, id: &str, action: &Action) {
-        match action {
-            Action::Macro { steps, options: o } => match o.trigger {
+        self.release_held(id);
+        if let Action::Macro { steps, options: o } = action {
+            match o.trigger {
                 Trigger::Release => self.fire_macro(id, steps, o),
                 Trigger::Hold => self.stop_macro(id),
                 _ => {}
-            },
-            Action::Key { key } => {
-                if let Some(k) = key_from_name(key) {
-                    self.keys(&[k], Direction::Release);
-                }
             }
-            Action::Shortcut { keys } => {
-                let ks: Vec<Key> = keys.iter().filter_map(|k| key_from_name(k)).collect();
-                self.keys(&ks, Direction::Release);
-            }
-            Action::Mouse { button } => self.mouse(button, Direction::Release),
-            _ => {}
         }
     }
 }
@@ -524,6 +548,38 @@ fn is_executable(path: &std::path::Path) -> bool {
 #[cfg(not(windows))]
 fn in_path(program: &str) -> bool {
     std::env::var_os("PATH").is_some_and(|paths| std::env::split_paths(&paths).any(|dir| is_executable(&dir.join(program))))
+}
+
+#[cfg(test)]
+mod held_tests {
+    use super::*;
+
+    fn injector() -> Injector {
+        Injector { enigo: None, running: HashMap::new(), held: HashMap::new() }
+    }
+
+    #[test]
+    fn release_uses_the_action_that_was_pressed() {
+        let mut i = injector();
+        i.press("k5", &Action::Key { key: "Control".into() });
+        assert!(i.held.contains_key("k5"));
+        // Bindings changed while the key was down: the release still clears what was pressed.
+        i.release("k5", &Action::Disabled);
+        assert!(i.held.is_empty());
+    }
+
+    #[test]
+    fn stop_all_and_device_loss_let_go() {
+        let mut i = injector();
+        i.press("k5", &Action::Shortcut { keys: vec!["Control".into(), "C".into()] });
+        i.press("mback", &Action::Mouse { button: "left".into() });
+        i.press("k6", &Action::Text { text: "x".into() });
+        assert_eq!(i.held.len(), 2, "only keys and buttons stay down");
+        i.release_where(|id| id.starts_with('m'));
+        assert_eq!(i.held.keys().collect::<Vec<_>>(), ["k5"]);
+        i.stop_all();
+        assert!(i.held.is_empty());
+    }
 }
 
 #[cfg(all(test, not(windows)))]
