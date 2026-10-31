@@ -2,6 +2,7 @@ mod battery_icon;
 mod effects;
 mod engine;
 mod eq;
+mod foreground;
 mod profiles;
 mod mouse;
 mod remap;
@@ -309,10 +310,10 @@ fn delete_profile(app: AppHandle, state: State<AppState>, id: String) -> Result<
     Ok(())
 }
 
-/// Executable of the window in front, to help fill a profile's app list.
+/// Program of the window in front, to help fill a profile's app list.
 #[tauri::command]
 fn foreground_app() -> Option<String> {
-    profiles::foreground_exe()
+    foreground::names().into_iter().next()
 }
 
 // ---- App settings / battery tray ----
@@ -492,18 +493,22 @@ fn spawn_auto_switch(app: AppHandle) {
     thread::spawn(move || loop {
         thread::sleep(Duration::from_millis(1000));
         let Some(st) = app.try_state::<AppState>() else { continue };
-        let exe = profiles::foreground_exe();
+        // Stay on an auto profile while our own window is in front (user is editing it).
+        // On Wayland our window is invisible to the X11 lookup, so ask the window too.
+        if app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(false) {
+            continue;
+        }
+        let names = foreground::names();
+        if names.iter().any(|n| n.to_lowercase().starts_with("openperipheral")) {
+            continue;
+        }
         let (target, auto) = {
             let store = st.store.lock().unwrap();
-            match exe.as_deref().and_then(|e| store.for_app(e).map(|p| (p.id.clone(), e.to_string()))) {
-                Some((id, e)) => (id, Some(e)),
+            match names.iter().find_map(|n| store.for_app(n).map(|p| (p.id.clone(), n.clone()))) {
+                Some((id, n)) => (id, Some(n)),
                 None => (store.selected.clone(), None),
             }
         };
-        // Stay on an auto profile while our own window is in front (user is editing it).
-        if exe.as_deref().is_some_and(|e| e.to_lowercase().starts_with("openperipheral")) {
-            continue;
-        }
         if st.active_id() != target {
             activate(&app, &target, auto);
         }

@@ -121,45 +121,6 @@ fn slug(name: &str) -> String {
     if s.is_empty() { "perfil".into() } else { s }
 }
 
-/// Executable name of the foreground window, e.g. "cs2.exe".
-#[cfg(windows)]
-pub fn foreground_exe() -> Option<String> {
-    use windows_sys::Win32::{
-        Foundation::CloseHandle,
-        System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION},
-        UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId},
-    };
-    unsafe {
-        let hwnd = GetForegroundWindow();
-        if hwnd.is_null() {
-            return None;
-        }
-        let mut pid = 0u32;
-        GetWindowThreadProcessId(hwnd, &mut pid);
-        if pid == 0 {
-            return None;
-        }
-        let h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
-        if h.is_null() {
-            return None;
-        }
-        let mut buf = [0u16; 1024];
-        let mut len = buf.len() as u32;
-        let ok = QueryFullProcessImageNameW(h, 0, buf.as_mut_ptr(), &mut len);
-        CloseHandle(h);
-        if ok == 0 {
-            return None;
-        }
-        let path = String::from_utf16_lossy(&buf[..len as usize]);
-        path.rsplit(['\\', '/']).next().map(str::to_string)
-    }
-}
-
-#[cfg(not(windows))]
-pub fn foreground_exe() -> Option<String> {
-    None // TODO: X11 _NET_ACTIVE_WINDOW / compositor-specific on Wayland
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
