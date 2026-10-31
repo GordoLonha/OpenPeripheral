@@ -1,10 +1,17 @@
 # Push a tag like v0.3.0 to build the Linux and Windows packages and attach them to a
 # draft GitHub Release. Review the draft, then publish it by hand.
+# Or, without git: Actions → Release → Run workflow, with the version (e.g. v0.4.2). It
+# builds from main, and the tag is created on main when the draft is published.
 name: Release
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag to release, e.g. v0.4.2'
+        required: true
 
 permissions:
   contents: write
@@ -45,8 +52,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: app
-          tagName: ${{ github.ref_name }}
-          releaseName: OpenPeripheral ${{ github.ref_name }}
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: OpenPeripheral ${{ inputs.tag || github.ref_name }}
           releaseBody: |
             See CHANGELOG.md. **Linux**: tested on Fedora 44 (KDE Wayland).
             **Windows: beta**, builds and passes the tests; hardware tests on Windows still in progress.
