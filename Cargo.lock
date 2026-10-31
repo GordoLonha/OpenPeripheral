@@ -2726,7 +2726,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "op-core"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "hidapi",
  "serde",
@@ -2736,7 +2736,7 @@ dependencies = [
 
 [[package]]
 name = "opctl"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "clap",
  "hidapi",
@@ -2745,7 +2745,7 @@ dependencies = [
 
 [[package]]
 name = "openperipheral-app"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "enigo",
  "evdev",

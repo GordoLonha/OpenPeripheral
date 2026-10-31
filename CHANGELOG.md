@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.2 — 2026-10-31
 
 - **Profiles switch by themselves on Linux**: a profile linked to a program now turns on
   while that program is in front, like on Windows. Works on X11 and, on Wayland, for
