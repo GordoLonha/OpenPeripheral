@@ -1,28 +1,35 @@
-import type { Lighting, Profiles, Status } from './api';
-
-/** One-click lighting scenes (applied to the active profile). */
-export const SCENES: { id: string; name: string; css: string; patch: Partial<Lighting> }[] = [
-  { id: 'rainbow', name: 'Arco-íris', css: 'linear-gradient(90deg,#ff3b3b,#ffb02e,#f6ff3d,#3dff7a,#3dc8ff,#7a5cff,#ff3df2)', patch: { effect: 'rainbow', speed: 1 } },
-  { id: 'ocean', name: 'Oceano', css: 'linear-gradient(120deg,#003a8c,#00c2ff,#003a8c)', patch: { effect: 'wave', color: [0, 190, 255], color2: [0, 20, 90], speed: 0.8 } },
-  { id: 'sunset', name: 'Pôr do sol', css: 'linear-gradient(120deg,#5a005e,#ff4f6d,#ffb347)', patch: { effect: 'wave', color: [255, 120, 40], color2: [120, 0, 90], speed: 0.6 } },
-  { id: 'aurora', name: 'Aurora', css: 'linear-gradient(120deg,#002b1f,#3dff9a,#7a5cff)', patch: { effect: 'wave', color: [60, 255, 150], color2: [80, 40, 200], speed: 0.5 } },
-  { id: 'calm', name: 'Respirar', css: 'radial-gradient(circle,#b37bff,#2a0b4a)', patch: { effect: 'breathing', color: [170, 110, 255], color2: [10, 0, 30], speed: 0.8 } },
-  { id: 'reactive', name: 'Reativo', css: 'radial-gradient(circle at 35% 50%,#ffffff 0 12%,#00d0ff 13% 30%,#06121c 31%)', patch: { effect: 'reactive', color: [255, 255, 255], color2: [0, 40, 70], speed: 1.2 } },
-  { id: 'white', name: 'Branco', css: '#f2f4f8', patch: { effect: 'static', color: [255, 255, 255] } },
-  { id: 'red', name: 'Vermelho', css: '#ff2a3d', patch: { effect: 'static', color: [255, 20, 30] } },
-];
+import { useEffect, useState } from 'react';
+import { api, type Eq, type Lighting, type Profiles, type Status } from './api';
+import { Keyboard } from './Keyboard';
+import { Switch } from './controls';
+import { Icon } from './icons';
+import { POLLING, useAppSettings } from './settings';
+import { H, PRESETS, W, eqPath, yOf } from './eqmath';
+import { EFFECTS, SCENES, batteryColor, sceneOf } from './display';
 
 type Props = {
   status: Status | null;
   profiles: Profiles | null;
+  lighting: Lighting;
+  ledmap: Record<string, number | null>;
   onOpen: (page: 'keyboard' | 'headset' | 'mouse') => void;
+  onLighting: (patch: Partial<Lighting>) => void;
   onScene: (patch: Partial<Lighting>) => void;
 };
 
-export function Home({ status, profiles, onOpen, onScene }: Props) {
+/** Início: the keyboard lit as it is now, quick controls, one card per other device, scenes. */
+export function Home({ status, profiles, lighting, ledmap, onOpen, onLighting, onScene }: Props) {
+  const [settings, patchSettings] = useAppSettings();
+  const kb = status?.keyboard;
   const hs = status?.headset;
-  const anyDevice = !!(status?.keyboard || status?.headset || status?.mouse);
+  const anyDevice = !!(kb || hs || status?.mouse);
   const active = profiles?.profiles.find((p) => p.id === profiles.active);
+  const scene = sceneOf(lighting);
+  const lightName = scene?.name ?? EFFECTS.find((e) => e.id === lighting.effect)?.name ?? '';
+  // The Win Lock key toggles it on the keyboard: the live state comes with the status.
+  const winLock = status?.win_lock ?? settings?.win_lock ?? false;
+  const polling = POLLING.find((p) => p.ms === settings?.polling_ms)?.label;
+
   return (
     <>
       <header className="page-head">
@@ -45,101 +52,217 @@ export function Home({ status, profiles, onOpen, onScene }: Props) {
         </section>
       )}
 
-      <section className="device-cards">
-        {status?.keyboard && (
-        <button className="device-card" onClick={() => onOpen('keyboard')}>
-          <KeyboardGlyph />
-          <div>
-            <strong>K70 RGB MK.2 Low Profile</strong>
-            <small>{status?.keyboard ? `conectado · firmware ${status.keyboard.firmware}` : 'desconectado'}</small>
-          </div>
-          <span className={'dot' + (status?.keyboard ? ' online' : '')} aria-hidden />
-        </button>
-        )}
-        {hs && (
-        <button className="device-card" onClick={() => onOpen('headset')}>
-          <HeadsetGlyph />
-          <div>
-            <strong>HS80 RGB Wireless</strong>
-            <small>
-              {!hs ? 'receptor desconectado' : hs.battery == null ? 'headset desligado' : hs.charging ? 'carregando' : 'sem fio'}
-            </small>
-          </div>
-          {hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
-        </button>
-        )}
-        {status?.mouse && (
-          <button className="device-card" onClick={() => onOpen('mouse')}>
-            <MouseGlyph />
-            <div>
-              <strong>{status.mouse.name}</strong>
-              <small>
-                firmware {status.mouse.firmware} · DPI {status.mouse.dpi_stage + 1}
-              </small>
+      {kb && (
+        <section className="card home-hero">
+          <div className="home-hero-stage">
+            <div className="card-head">
+              <div>
+                <h2 className="card-title">K70 RGB MK.2 Low Profile</h2>
+                <p className="muted small">
+                  conectado · firmware {kb.firmware}
+                  {polling && ` · ${polling}`}
+                </p>
+              </div>
+              <button className="ghost" onClick={() => onOpen('keyboard')}>
+                Abrir teclado
+              </button>
             </div>
-            <span className="dot online" aria-hidden />
-          </button>
-        )}
-      </section>
+            <Keyboard lighting={lighting} ledmap={ledmap} painting={false} />
+          </div>
+          <div className="home-hero-controls">
+            <div>
+              <div className="eyebrow">{scene ? 'Cena' : 'Efeito'}</div>
+              <div className="card-title home-light-name">{lightName}</div>
+            </div>
+            <label className="slider">
+              <span>
+                Brilho <output>{lighting.brightness}%</output>
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={lighting.brightness}
+                onChange={(e) => onLighting({ brightness: Number(e.target.value) })}
+              />
+            </label>
+            <div className="home-row">
+              <span>
+                Win Lock
+                <small>{winLock ? 'Tecla Windows bloqueada' : 'Tecla Windows liberada'}</small>
+              </span>
+              <Switch on={winLock} disabled={!settings} label="Win Lock" onClick={() => patchSettings({ win_lock: !winLock })} />
+            </div>
+            <div className="home-row">
+              <span>
+                Perfil automático
+                <small>{profiles?.auto_app ? `${active?.name} enquanto ${profiles.auto_app} estiver na frente` : 'Nenhum programa ligado na frente'}</small>
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
 
-      {(status?.keyboard || status?.mouse) && (
-      <section className="home-section">
-        <h2>Cenas de iluminação</h2>
-        <div className="scenes">
-          {SCENES.map((s) => (
-            <button key={s.id} className="scene" onClick={() => onScene(s.patch)}>
-              <span className="scene-swatch" style={{ background: s.css }} aria-hidden />
-              <span>{s.name}</span>
-            </button>
-          ))}
-        </div>
-        <p className="muted small">Aplica no perfil em uso, no teclado e na luz do mouse que segue o teclado.</p>
-      </section>
+      {(hs || status?.mouse) && (
+        // With the mouse too, headset and mouse share a row and the EQ takes the next one.
+        <section className={'home-devices' + (hs && status?.mouse ? ' three' : '')}>
+          {hs && <HeadsetCard hs={hs} sleepMin={settings?.headset_sleep_min ?? null} onOpen={() => onOpen('headset')} />}
+          {status?.mouse && <MouseCard mouse={status.mouse} onOpen={() => onOpen('mouse')} />}
+          {hs && <EqCard />}
+        </section>
+      )}
+
+      {(kb || status?.mouse) && (
+        <section className="home-section">
+          <div className="home-section-head">
+            <h2 className="card-title">Cenas de iluminação</h2>
+            <p className="muted small">Aplica no perfil em uso, no teclado e na luz do mouse que segue o teclado.</p>
+          </div>
+          <div className="scenes">
+            {SCENES.map((s) => (
+              <button
+                key={s.id}
+                className={'scene' + (s.id === scene?.id ? ' on' : '')}
+                aria-pressed={s.id === scene?.id}
+                onClick={() => onScene(s.patch)}
+              >
+                <span className="scene-swatch" style={{ background: s.css }} aria-hidden />
+                <span className="scene-name">
+                  {s.name}
+                  {s.id === scene?.id && <em>em uso</em>}
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
     </>
   );
 }
 
-export function batteryColor(pct: number, charging: boolean): string {
-  if (charging) return 'var(--accent)';
-  if (pct < 15) return 'var(--danger)';
-  if (pct < 40) return 'var(--warn)';
-  return 'var(--ok)';
-}
-
-export function BatteryPill({ pct, charging }: { pct: number; charging: boolean }) {
+function BatteryRing({ pct, charging, size = 96 }: { pct: number | null; charging: boolean; size?: number }) {
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const color = pct == null ? 'var(--faint)' : batteryColor(pct, charging);
   return (
-    <span className="battery-pill" style={{ color: batteryColor(pct, charging) }}>
-      <span className="battery-shape" aria-hidden>
-        <span style={{ width: `${Math.max(8, pct)}%`, background: batteryColor(pct, charging) }} />
-      </span>
-      {pct.toFixed(0)}%{charging && ' ⚡'}
-    </span>
+    <div className="battery-ring" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+        <circle cx={size / 2} cy={size / 2} r={r} className="track" strokeWidth={stroke} />
+        {pct != null && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${(c * pct) / 100} ${c}`}
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        )}
+      </svg>
+      <div className="battery-ring-label">
+        <strong>{pct == null ? '—' : `${pct.toFixed(0)}%`}</strong>
+        <small>{charging ? 'carregando' : 'bateria'}</small>
+      </div>
+    </div>
   );
 }
 
-const KeyboardGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <rect x="1" y="4" width="62" height="24" rx="4" />
-    {Array.from({ length: 3 }, (_, r) =>
-      Array.from({ length: 11 }, (_, c) => <rect key={`${r}-${c}`} className="k" x={5 + c * 5} y={8 + r * 5} width="3.6" height="3.6" rx="0.8" />),
-    )}
-    <rect className="k" x="15" y="23" width="30" height="3" rx="0.8" />
-  </svg>
-);
+function HeadsetCard({ hs, sleepMin, onOpen }: { hs: NonNullable<Status['headset']>; sleepMin: number | null; onOpen: () => void }) {
+  const wired = hs.name.includes('cabo');
+  const parts = [
+    hs.battery == null ? 'headset desligado' : wired ? 'cabo USB' : 'sem fio',
+    hs.mic_muted == null ? null : hs.mic_muted ? 'microfone mudo' : 'microfone ligado',
+    sleepMin ? `desliga em ${sleepMin} min parado` : null,
+  ].filter(Boolean);
+  return (
+    <div className="card home-device">
+      <BatteryRing pct={hs.battery} charging={hs.charging} />
+      <div className="home-device-body">
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">HS80 RGB Wireless</h2>
+            <p className="muted small">{parts.join(' · ')}</p>
+          </div>
+          <button className="ghost" onClick={onOpen}>
+            Abrir
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const MouseGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <rect x="24" y="2" width="16" height="28" rx="8" fill="none" strokeWidth="3" />
-    <path d="M32 2v10" fill="none" strokeWidth="3" />
-  </svg>
-);
+/** Preset chips and the curve; the full editor is on the headset page. */
+function EqCard() {
+  const [eq, setEq] = useState<Eq | null>(null);
+  useEffect(() => {
+    api.eq().then(setEq);
+    const un = api.onEq(setEq);
+    return () => {
+      un.then((f) => f());
+    };
+  }, []);
+  if (!eq) return null;
+  const pick = (id: string, gains: number[]) => {
+    const next = { ...eq, enabled: true, preset: id, gains: [...gains] };
+    setEq(next);
+    api.setEq(next).catch(() => api.eq().then(setEq));
+  };
+  const curve = eqPath(eq.gains);
+  return (
+    <div className="card home-eq">
+      <div className="card-head">
+        <h2 className="card-title">Equalizador</h2>
+        <span className="muted small">{eq.enabled ? 'clique na roda do fone troca' : 'desligado'}</span>
+      </div>
+      <div className="chips">
+        {PRESETS.map((p) => (
+          <button key={p.id} className={'chip' + (eq.enabled && eq.preset === p.id ? ' on' : '')} onClick={() => pick(p.id, p.gains)}>
+            {p.name}
+          </button>
+        ))}
+      </div>
+      <svg className={'home-eq-curve' + (eq.enabled ? '' : ' off')} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden>
+        <line x1={0} x2={W} y1={yOf(0)} y2={yOf(0)} className="zero" />
+        <path d={`${curve} L${W},${H} L0,${H} Z`} className="fill" />
+        <path d={curve} className="line" />
+      </svg>
+    </div>
+  );
+}
 
-const HeadsetGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <path d="M18 22v-6a14 14 0 0 1 28 0v6" fill="none" strokeWidth="3" />
-    <rect x="13" y="18" width="8" height="12" rx="3" />
-    <rect x="43" y="18" width="8" height="12" rx="3" />
-  </svg>
-);
-
+function MouseCard({ mouse, onOpen }: { mouse: NonNullable<Status['mouse']>; onOpen: () => void }) {
+  return (
+    <div className="card home-device">
+      <span className="home-device-glyph">
+        <Icon name="mouse" size={44} />
+      </span>
+      <div className="home-device-body">
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">{mouse.name}</h2>
+            <p className="muted small">firmware {mouse.firmware}</p>
+          </div>
+          <button className="ghost" onClick={onOpen}>
+            Abrir
+          </button>
+        </div>
+        <div className="home-row">
+          <span>Estágio de DPI</span>
+          <div className="seg" role="group" aria-label="Estágio de DPI">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <button key={i} className={mouse.dpi_stage === i ? 'on' : ''} aria-pressed={mouse.dpi_stage === i} onClick={() => api.setMouseStage(i)}>
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

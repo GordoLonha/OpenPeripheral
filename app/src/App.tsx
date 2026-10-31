@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, toHex, type AppSettings, type Bindings, type Effect, type Lighting, type Profiles, type RGB, type Status } from './api';
+import { api, toHex, type AppSettings, type Bindings, type Lighting, type Profiles, type RGB, type Status } from './api';
 import { Keyboard, geometryFor } from './Keyboard';
 import { Equalizer } from './Equalizer';
 import { KeyActions } from './KeyActions';
@@ -9,16 +9,10 @@ import { Icon, type IconName } from './icons';
 import { MousePage } from './MousePage';
 import { RELEASES_URL, installKind, openUrl, useUpdater, type InstallKind } from './updates';
 import { ProfileSwitcher, ProfilesPage } from './Profiles';
-import { Home, batteryColor } from './Home';
+import { Home } from './Home';
+import { EFFECTS, batteryColor } from './display';
 import './App.css';
 
-const EFFECTS: { id: Effect; name: string; hint: string; two?: boolean }[] = [
-  { id: 'static', name: 'Cor fixa', hint: 'Uma cor em todo o teclado' },
-  { id: 'rainbow', name: 'Arco-íris', hint: 'Espectro correndo da esquerda para a direita' },
-  { id: 'wave', name: 'Onda', hint: 'Onda entre duas cores', two: true },
-  { id: 'breathing', name: 'Respiração', hint: 'Pulsa suavemente entre duas cores', two: true },
-  { id: 'reactive', name: 'Reativo', hint: 'A tecla acende quando você aperta', two: true },
-];
 
 const SWATCHES: RGB[] = [
   [255, 255, 255], [255, 0, 0], [255, 110, 0], [255, 220, 0], [0, 255, 90],
@@ -198,7 +192,15 @@ export default function App() {
         )}
 
         {page === 'home' ? (
-          <Home status={status} profiles={profiles} onOpen={setPage} onScene={(patch) => update({ ...patch, painted: {} })} />
+          <Home
+            status={status}
+            profiles={profiles}
+            lighting={lighting}
+            ledmap={ledmap}
+            onOpen={setPage}
+            onLighting={update}
+            onScene={(patch) => update({ ...patch, painted: {} })}
+          />
         ) : page === 'keyboard' ? (
           <>
             <header className="page-head">

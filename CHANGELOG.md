@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.3 — 2026-10-31
+
+- **New Início page**: the keyboard drawn lit with the lighting in use, with brightness,
+  Win Lock and the automatic profile beside it; the headset with a battery ring, mic and
+  auto-off; the equalizer presets and curve; the mouse DPI stage; the scene in use is
+  marked.
+
 ## 0.4.2 — 2026-10-31
 
 - **Profiles switch by themselves on Linux**: a profile linked to a program now turns on
