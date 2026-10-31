@@ -465,7 +465,91 @@ pub(crate) fn launch(target: &str) {
     }
     #[cfg(not(windows))]
     {
-        let _ = std::process::Command::new("xdg-open").arg(target).spawn();
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/".into());
+        let Some((program, args)) = unix_command(target, &home, in_path) else { return };
+        let child = std::process::Command::new(&program)
+            .args(&args)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+        // Reap it, or every launch stays a zombie until the app quits.
+        if let Ok(mut child) = child {
+            std::thread::spawn(move || child.wait());
+        }
+    }
+}
+
+/// What to run on Linux for a launch target.
+///
+/// The presets in the UI are named after Windows programs (`calc`, `notepad`,
+/// `explorer`, `ms-settings:`) so profiles move between systems; here they become the
+/// desktop's own calculator, text editor, file manager and settings. Otherwise a
+/// program on the PATH runs with its arguments, and anything else (URL, file,
+/// folder) goes to `xdg-open`, which cannot start programs by itself.
+#[cfg(not(windows))]
+fn unix_command(target: &str, home: &str, exists: impl Fn(&str) -> bool) -> Option<(String, Vec<String>)> {
+    let first = |names: &[&str]| names.iter().find(|n| exists(n)).map(|n| (n.to_string(), vec![]));
+    match target.to_ascii_lowercase().as_str() {
+        "calc" | "calc.exe" => {
+            return first(&["gnome-calculator", "kcalc", "qalculate-gtk", "galculator", "mate-calc", "xcalc"]);
+        }
+        "notepad" | "notepad.exe" => {
+            return first(&["gnome-text-editor", "kwrite", "kate", "gedit", "mousepad", "xed", "pluma", "featherpad"]);
+        }
+        "ms-settings:" => {
+            return first(&["systemsettings", "gnome-control-center", "xfce4-settings-manager", "cinnamon-settings", "mate-control-center"]);
+        }
+        "explorer" | "explorer.exe" => return Some(("xdg-open".into(), vec![home.to_string()])),
+        _ => {}
+    }
+    // The first word decides: a program (on the PATH, or a path to an executable) runs
+    // with the rest as arguments. A URL has a '/' and is not an executable file.
+    let mut words = target.split_whitespace();
+    if let Some(program) = words.next() {
+        let runnable = if program.contains('/') { is_executable(std::path::Path::new(program)) } else { exists(program) };
+        if runnable {
+            return Some((program.to_string(), words.map(str::to_string).collect()));
+        }
+    }
+    Some(("xdg-open".into(), vec![target.to_string()]))
+}
+
+#[cfg(not(windows))]
+fn is_executable(path: &std::path::Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    path.metadata().is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(windows))]
+fn in_path(program: &str) -> bool {
+    std::env::var_os("PATH").is_some_and(|paths| std::env::split_paths(&paths).any(|dir| is_executable(&dir.join(program))))
+}
+
+#[cfg(all(test, not(windows)))]
+mod launch_tests {
+    use super::unix_command;
+
+    fn cmd(target: &str, installed: &[&str]) -> Option<(String, Vec<String>)> {
+        unix_command(target, "/home/u", |p| installed.contains(&p))
+    }
+
+    #[test]
+    fn presets_map_to_desktop_programs() {
+        assert_eq!(cmd("calc", &["kcalc"]), Some(("kcalc".into(), vec![])));
+        assert_eq!(cmd("notepad", &["kate", "gedit"]), Some(("kate".into(), vec![])));
+        assert_eq!(cmd("ms-settings:", &["gnome-control-center"]), Some(("gnome-control-center".into(), vec![])));
+        assert_eq!(cmd("explorer", &[]), Some(("xdg-open".into(), vec!["/home/u".into()])));
+        assert_eq!(cmd("calc", &[]), None, "no calculator installed: do nothing");
+    }
+
+    #[test]
+    fn programs_urls_and_files() {
+        assert_eq!(cmd("steam steam://rungameid/730", &["steam"]), Some(("steam".into(), vec!["steam://rungameid/730".into()])));
+        assert_eq!(cmd("https://example.com", &[]), Some(("xdg-open".into(), vec!["https://example.com".into()])));
+        assert_eq!(cmd("mailto:a@b.c", &[]), Some(("xdg-open".into(), vec!["mailto:a@b.c".into()])));
+        assert_eq!(cmd("/home/u/notes.txt", &[]), Some(("xdg-open".into(), vec!["/home/u/notes.txt".into()])));
+        assert_eq!(cmd("/bin/sh -c true", &[]), Some(("/bin/sh".into(), vec!["-c".into(), "true".into()])));
     }
 }
 

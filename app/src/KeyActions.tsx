@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { DEFAULT_MACRO_OPTIONS, type Action, type Bindings } from './api';
+import { DEFAULT_MACRO_OPTIONS, isWindows, type Action, type Bindings } from './api';
 import { Icon, type IconName } from './icons';
 import { KEYS } from './layout';
 import { MacroEditor } from './MacroEditor';
@@ -60,9 +60,13 @@ const MOUSE = [
   { id: 'back', name: 'Voltar' }, { id: 'forward', name: 'Avançar' },
   { id: 'scrollup', name: 'Rolar para cima' }, { id: 'scrolldown', name: 'Rolar para baixo' },
 ];
+// The ids are Windows names on every system so profiles move between them; on Linux the
+// backend opens the desktop's own calculator, text editor, file manager and settings.
 const LAUNCH = [
-  { id: 'https://', name: 'Navegador' }, { id: 'calc', name: 'Calculadora' }, { id: 'notepad', name: 'Bloco de notas' },
-  { id: 'explorer', name: 'Explorador de arquivos' }, { id: 'ms-settings:', name: 'Configurações do Windows' },
+  { id: 'https://', name: 'Navegador' }, { id: 'calc', name: 'Calculadora' },
+  { id: 'notepad', name: isWindows ? 'Bloco de notas' : 'Editor de texto' },
+  { id: 'explorer', name: isWindows ? 'Explorador de arquivos' : 'Gerenciador de arquivos' },
+  { id: 'ms-settings:', name: isWindows ? 'Configurações do Windows' : 'Configurações do sistema' },
 ];
 
 /** Browser KeyboardEvent -> remap.rs key name. */
@@ -357,7 +361,7 @@ export function Detail({ action, onChange, profiles }: { action: Action; onChang
             Ou um programa, arquivo ou site
             <input
               value={preset ? '' : action.target}
-              placeholder="C:\Jogos\jogo.exe   ·   https://…"
+              placeholder={isWindows ? 'C:\\Jogos\\jogo.exe   ·   https://…' : 'steam steam://rungameid/730   ·   https://…'}
               onChange={(e) => onChange({ kind: 'launch', target: e.target.value })}
             />
           </label>

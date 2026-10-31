@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, type ProfileInfo, type Profiles } from './api';
+import { api, isWindows, type ProfileInfo, type Profiles } from './api';
 import { Icon } from './icons';
 
 /** Compact switcher for the sidebar. */
@@ -50,8 +50,6 @@ export function ProfileSwitcher({ data, onManage }: { data: Profiles; onManage: 
     </div>
   );
 }
-
-const isWindows = typeof navigator !== 'undefined' && /windows/i.test(navigator.userAgent);
 
 /** Full page: create, rename, delete, and link programs for automatic switching. */
 export function ProfilesPage({ data }: { data: Profiles }) {
