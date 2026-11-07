@@ -582,6 +582,13 @@ button.dpi-label { cursor: pointer; }
   padding: 18px; display: grid; gap: 10px; align-content: start; align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
+.log-bar {
+  grid-column: 1 / -1; background: var(--panel); border-radius: var(--r-sm); padding: 12px 14px;
+  display: flex; align-items: flex-end; gap: var(--s3); flex-wrap: wrap;
+}
+.log-bar .log-text { flex: 1 1 260px; min-width: 0; align-self: center; }
+.log-bar .log-text p { margin: 2px 0 0; overflow-wrap: anywhere; }
+.log-bar .field { flex-direction: row; align-items: center; gap: 6px; }
 .sensor-group { background: var(--panel); border-radius: var(--r-sm); padding: 14px; display: grid; gap: 10px; align-content: start; }
 .sensor-group h2 { font-size: 14px; font-weight: 400; }
 .sensor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

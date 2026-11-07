@@ -4,7 +4,7 @@
 import { emit } from '@tauri-apps/api/event';
 import { mockIPC } from '@tauri-apps/api/mocks';
 import keymapBR from '../../layout/k70_mk2_lp_BR.json';
-import type { AppSettings, Bindings, Eq, Lighting, Profiles, Reading, Status } from './api';
+import type { AppSettings, Bindings, Eq, Lighting, Profiles, Reading, SensorLogState, Status } from './api';
 
 const keymap = keymapBR as Record<string, number | null>;
 // Same rule as op_core::k70::led_for_key: the key matrix transposed on 12 columns.
@@ -22,6 +22,7 @@ let settings: AppSettings = {
   memory_keyboard: false,
   memory_mouse: false,
   memory_headset: false,
+  fahrenheit: false,
   win_lock: false,
   lock_alt_tab: false,
   lock_alt_f4: false,
@@ -46,6 +47,8 @@ let settings: AppSettings = {
   },
 };
 
+let sensorLog: SensorLogState = { running: false, path: null, rows: 0, error: null };
+let logTimer: number | undefined;
 const status: Status = {
   keyboard: { name: 'K70 RGB MK.2 Low Profile', firmware: '3.24', memory: false },
   headset: { name: 'HS80 RGB Wireless', battery: 64, charging: false, firmware: '5.13', mic_muted: false, memory: false },
@@ -124,6 +127,22 @@ export function installDevMock() {
       switch (cmd) {
         case 'get_status': return status;
         case 'get_sensors': return readSensors();
+        case 'get_sensor_log': return sensorLog;
+        case 'start_sensor_log': {
+          const req = a.request as { every: number };
+          sensorLog = { running: true, path: '/home/voce/Documentos/OpenPeripheral - sensores/sensores-2026-11-07_16-30-00.csv', rows: 0, error: null };
+          window.clearInterval(logTimer);
+          logTimer = window.setInterval(() => {
+            sensorLog = { ...sensorLog, rows: sensorLog.rows + 1 };
+            void emit('sensor-log', sensorLog);
+          }, 1500 * req.every);
+          return sensorLog;
+        }
+        case 'stop_sensor_log':
+          window.clearInterval(logTimer);
+          sensorLog = { ...sensorLog, running: false };
+          return sensorLog;
+        case 'open_sensor_logs': return null;
         case 'get_headset_lighting': return headsetLighting;
         case 'set_headset_lighting': headsetLighting = (a.lighting as Lighting | null) ?? null; return null;
         case 'get_lighting': return lighting;

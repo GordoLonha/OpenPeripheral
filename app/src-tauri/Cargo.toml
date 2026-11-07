@@ -24,6 +24,7 @@ enigo = "0.6.1"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 tauri-plugin-notification = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [target."cfg(target_os = \"linux\")".dependencies]
 evdev = "0.12"

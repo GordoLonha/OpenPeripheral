@@ -1,5 +1,6 @@
-import type { Reading } from './api';
-import { GROUPS, UNIT, cpuTemp, formatValue, sensorName, sensorSource, useSensors } from './sensors';
+import { useEffect, useState } from 'react';
+import { api, type Reading, type SensorLogState } from './api';
+import { GROUPS, cpuTemp, formatValue, isFahrenheit, sensorName, sensorSource, unitLabel, useSensors } from './sensors';
 
 /** One sensor: name, value, min / max of the kept readings and a small graph. */
 export function SensorTile({ r, hist, sub }: { r: Reading; hist: number[]; sub?: string }) {
@@ -20,7 +21,7 @@ export function SensorTile({ r, hist, sub }: { r: Reading; hist: number[]; sub?:
       </div>
       {source && <span className="sensor-source">{source}</span>}
       <span className="sensor-value">
-        {formatValue(r)} <small>{UNIT[r.unit]}</small>
+        {formatValue(r)} <small>{unitLabel(r.unit)}</small>
       </span>
       <span className="sensor-range">
         mín {formatValue(min, r.unit)} · máx {formatValue(max, r.unit)}
@@ -39,6 +40,7 @@ export function Dashboard() {
   const groups = GROUPS.map(([id, name]) => [name, readings.filter((r) => r.group === id)] as const).filter(([, list]) => list.length);
   return (
     <div className="dashboard">
+      <SensorLogBar readings={readings} />
       {groups.length === 0 && (
         <div className="empty-devices">
           <h2>Lendo os sensores…</h2>
@@ -56,6 +58,108 @@ export function Dashboard() {
         </section>
       ))}
     </div>
+  );
+}
+
+/** Every row: one read is 1.5 s. */
+const LOG_EVERY: [number, string][] = [
+  [1, '1,5 s'],
+  [2, '3 s'],
+  [4, '6 s'],
+  [10, '15 s'],
+  [20, '30 s'],
+  [40, '1 min'],
+];
+const LOG_FOR: [number | null, string][] = [
+  [null, 'Até parar'],
+  [5, '5 min'],
+  [15, '15 min'],
+  [30, '30 min'],
+  [60, '1 hora'],
+  [180, '3 horas'],
+];
+
+/** Column name in the CSV: part, sensor, source and unit. */
+function columnLabel(r: Reading): string {
+  const part = GROUPS.find(([g]) => g === r.group)?.[1] ?? '';
+  const source = sensorSource(r);
+  return `${part} ${sensorName(r)}${source ? ` (${source})` : ''} [${unitLabel(r.unit)}]`;
+}
+
+/** Record every sensor to a CSV file (Documentos/OpenPeripheral - sensores). */
+function SensorLogBar({ readings }: { readings: Reading[] }) {
+  const [log, setLog] = useState<SensorLogState | null>(null);
+  const [every, setEvery] = useState(2);
+  const [minutes, setMinutes] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api.sensorLog().then(setLog, () => {});
+    const off = api.onSensorLog(setLog);
+    return () => {
+      off.then((f) => f());
+    };
+  }, []);
+  const start = async () => {
+    setError(null);
+    try {
+      const columns = readings.map((r) => ({ id: r.id, label: columnLabel(r) }));
+      setLog(await api.startSensorLog({ columns, every, minutes, fahrenheit: isFahrenheit() }));
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+  const running = !!log?.running;
+  const file = log?.path?.split(/[\\/]/).pop();
+  const problem = error ?? log?.error;
+  return (
+    <section className="log-bar">
+      <div className="log-text">
+        <strong>Registro em CSV</strong>
+        <p className="muted small">
+          {running
+            ? `Gravando ${file} · ${log!.rows} ${log!.rows === 1 ? 'linha' : 'linhas'}`
+            : problem
+              ? `Não deu para gravar: ${problem}`
+              : file
+                ? `Último arquivo: ${file} (${log!.rows} ${log!.rows === 1 ? 'linha' : 'linhas'})`
+                : 'Grava todos os sensores numa planilha, na pasta Documentos/OpenPeripheral - sensores.'}
+        </p>
+      </div>
+      {!running && (
+        <>
+          <label className="field">
+            <span>A cada</span>
+            <select value={every} onChange={(e) => setEvery(Number(e.target.value))}>
+              {LOG_EVERY.map(([n, label]) => (
+                <option key={n} value={n}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Por</span>
+            <select value={minutes ?? ''} onChange={(e) => setMinutes(e.target.value === '' ? null : Number(e.target.value))}>
+              {LOG_FOR.map(([m, label]) => (
+                <option key={label} value={m ?? ''}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      )}
+      <button className="ghost" onClick={() => api.openSensorLogs()}>
+        Abrir pasta
+      </button>
+      {running ? (
+        <button onClick={() => api.stopSensorLog().then(setLog)}>Parar</button>
+      ) : (
+        <button className="primary" disabled={!readings.length} onClick={start}>
+          Gravar
+        </button>
+      )}
+    </section>
   );
 }
 

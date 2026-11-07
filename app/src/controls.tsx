@@ -14,12 +14,22 @@ export function ColorField({ label, value, onChange }: { label: string; value: R
   );
 }
 
-export function Slider(p: { label: string; value: number; min: number; max: number; step: number; unit: string; onChange: (v: number) => void }) {
+export function Slider(p: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+  /** Shown value, when it is not just the number and the unit. */
+  format?: (v: number) => string;
+  onChange: (v: number) => void;
+}) {
   return (
     <label className="slider">
       <span>
         {p.label}
-        <output>{p.unit === '%' ? `${p.value}%` : p.unit === '×' ? `${p.value.toFixed(1)}×` : `${p.value} ${p.unit}`}</output>
+        <output>{p.format ? p.format(p.value) : p.unit === '%' ? `${p.value}%` : p.unit === '×' ? `${p.value.toFixed(1)}×` : `${p.value} ${p.unit}`}</output>
       </span>
       <input type="range" min={p.min} max={p.max} step={p.step} value={p.value} onChange={(e) => p.onChange(Number(e.target.value))} />
     </label>

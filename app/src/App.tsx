@@ -14,8 +14,8 @@ import { TopBar, ProfileRail } from './Chrome';
 import { DeviceArt, HeadsetArt, type DeviceId } from './DeviceArt';
 import { EFFECTS, connected, deviceName } from './fx';
 import { Dashboard } from './Dashboard';
-import { HeadsetLighting } from './LightEditor';
-import { startSensors } from './sensors';
+import { HeadsetLighting, TempSliders } from './LightEditor';
+import { setFahrenheit, startSensors } from './sensors';
 import './App.css';
 
 const SWATCHES: RGB[] = [
@@ -262,28 +262,7 @@ export default function App() {
               <div>
                 <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
                 {!fx.still && <Slider label="Velocidade" value={lighting.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => update({ speed: v })} />}
-                {lighting.effect === 'temperature' && (
-                  <>
-                    <Slider
-                      label="Frio até"
-                      value={(lighting.temps ?? [40, 80])[0]}
-                      min={20}
-                      max={95}
-                      step={1}
-                      unit="°C"
-                      onChange={(v) => update({ temps: [v, Math.max(v + 5, (lighting.temps ?? [40, 80])[1])] })}
-                    />
-                    <Slider
-                      label="Quente a partir de"
-                      value={(lighting.temps ?? [40, 80])[1]}
-                      min={25}
-                      max={100}
-                      step={1}
-                      unit="°C"
-                      onChange={(v) => update({ temps: [Math.min(v - 5, (lighting.temps ?? [40, 80])[0]), v] })}
-                    />
-                  </>
-                )}
+                {lighting.effect === 'temperature' && <TempSliders value={lighting.temps} onChange={(temps) => update({ temps })} />}
               </div>
             </div>
           </section>
@@ -452,6 +431,10 @@ function GeneralSettings() {
     if (!appSettings) return;
     setAppSettings(await api.patchAppSettings({ [key]: !appSettings[key] }));
   };
+  const setUnit = async (f: boolean) => {
+    setFahrenheit(f);
+    setAppSettings(await api.patchAppSettings({ fahrenheit: f }));
+  };
   const toggle = async () => {
     const next = !autostart;
     await api.setAutostart(next);
@@ -491,6 +474,23 @@ function GeneralSettings() {
             <p>Avisa quando um jogo ou programa ativa outro perfil.</p>
           </div>
           <Switch on={!!appSettings?.notify_profile} disabled={!appSettings} onClick={() => flip('notify_profile')} />
+        </div>
+      </section>
+      <h3 className="section-label">Sensores</h3>
+      <section className="list">
+        <div className="list-row">
+          <div>
+            <strong>Unidade de temperatura</strong>
+            <p>No Painel, no Início, no efeito Temperatura e no registro em CSV.</p>
+          </div>
+          <div className="seg" role="group" aria-label="Unidade de temperatura">
+            <button className={appSettings && !appSettings.fahrenheit ? 'on' : ''} disabled={!appSettings} onClick={() => setUnit(false)}>
+              °C
+            </button>
+            <button className={appSettings?.fahrenheit ? 'on' : ''} disabled={!appSettings} onClick={() => setUnit(true)}>
+              °F
+            </button>
+          </div>
         </div>
       </section>
       <h3 className="section-label">Sobre</h3>

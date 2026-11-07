@@ -2,9 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { api, type Effect, type Lighting } from './api';
 import { ColorField, Slider } from './controls';
 import { EFFECTS } from './fx';
+import { formatTemp } from './sensors';
 
 /** Effects that make sense on a single light (mouse zones, headset logo): no key presses. */
 const ZONE_EFFECTS: Effect[] = ['static', 'rainbow', 'wave', 'breathing', 'colorshift', 'temperature'];
+
+/** Temperature effect: where the first colour ends and the second is full (kept in °C). */
+export function TempSliders({ value, onChange }: { value: [number, number] | undefined; onChange: (t: [number, number]) => void }) {
+  const [cold, hot] = value ?? [40, 80];
+  return (
+    <>
+      <Slider label="Frio até" value={cold} min={20} max={95} step={1} unit="°C" format={formatTemp} onChange={(v) => onChange([v, Math.max(v + 5, hot)])} />
+      <Slider label="Quente a partir de" value={hot} min={25} max={100} step={1} unit="°C" format={formatTemp} onChange={(v) => onChange([Math.min(v - 5, cold), v])} />
+    </>
+  );
+}
 
 /** Effect, colours, brightness and speed of one light. */
 export function ZoneEditor({ title, value, onChange }: { title: string; value: Lighting; onChange: (l: Lighting) => void }) {
@@ -27,6 +39,7 @@ export function ZoneEditor({ title, value, onChange }: { title: string; value: L
       </div>
       <Slider label="Brilho" value={value.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => set({ brightness: v })} />
       {!fx.still && <Slider label="Velocidade" value={value.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => set({ speed: v })} />}
+      {value.effect === 'temperature' && <TempSliders value={value.temps} onChange={(temps) => set({ temps })} />}
     </div>
   );
 }

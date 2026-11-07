@@ -7,6 +7,7 @@ mod profiles;
 mod mouse;
 mod notify;
 mod remap;
+mod sensor_log;
 mod sensors;
 #[cfg(target_os = "linux")]
 mod uinput;
@@ -85,6 +86,9 @@ struct AppSettings {
     memory_mouse: bool,
     #[serde(default)]
     memory_headset: bool,
+    /// Temperatures shown (and logged) in °F.
+    #[serde(default)]
+    fahrenheit: bool,
 }
 
 fn two() -> u8 {
@@ -154,6 +158,9 @@ struct AppState {
     sensors: Mutex<Vec<sensors::Reading>>,
     /// Which headset battery notices were already shown.
     battery_watch: Mutex<notify::BatteryWatch>,
+    /// CSV sensor log while one runs, and what the page shows about it.
+    sensor_log: Mutex<Option<sensor_log::SensorLog>>,
+    sensor_log_state: Mutex<sensor_log::State>,
 }
 
 impl AppState {
@@ -490,11 +497,77 @@ fn spawn_sensors(app: AppHandle) {
                     let _ = st.engine.send(Cmd::SetCpuTemp(t));
                 }
                 *st.sensors.lock().unwrap() = readings.clone();
+                log_sensors(&app, &st, &readings);
             }
             let _ = app.emit("sensors", &readings);
             thread::sleep(SENSORS_EVERY);
         }
     });
+}
+
+/// Next row of the sensor log, if one runs; tells the page when it changes.
+fn log_sensors(app: &AppHandle, st: &AppState, readings: &[sensors::Reading]) {
+    let mut log = st.sensor_log.lock().unwrap();
+    let Some(l) = log.as_mut() else { return };
+    let clock = chrono::Local::now().format("%H:%M:%S").to_string();
+    let next = match l.take(readings, std::time::Instant::now(), &clock) {
+        Ok(true) => l.state(),
+        Ok(false) => sensor_log::State { running: false, ..l.state() },
+        Err(e) => sensor_log::State { running: false, error: Some(e.to_string()), ..l.state() },
+    };
+    if !next.running {
+        *log = None;
+    }
+    set_log_state(app, st, next);
+}
+
+fn set_log_state(app: &AppHandle, st: &AppState, next: sensor_log::State) {
+    let mut cur = st.sensor_log_state.lock().unwrap();
+    if *cur != next {
+        *cur = next.clone();
+        let _ = app.emit("sensor-log", &next);
+    }
+}
+
+/// Sensor logs go to Documents/OpenPeripheral - sensores.
+fn sensor_log_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let docs = app.path().document_dir().or_else(|_| app.path().home_dir()).map_err(|e| e.to_string())?;
+    Ok(docs.join("OpenPeripheral - sensores"))
+}
+
+#[tauri::command]
+fn start_sensor_log(app: AppHandle, state: State<AppState>, request: sensor_log::Request) -> Result<sensor_log::State, String> {
+    let dir = sensor_log_dir(&app)?;
+    let stamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+    let log = sensor_log::SensorLog::start(&dir, request, &stamp, std::time::Instant::now()).map_err(|e| e.to_string())?;
+    let next = log.state();
+    *state.sensor_log.lock().unwrap() = Some(log);
+    set_log_state(&app, &state, next.clone());
+    Ok(next)
+}
+
+#[tauri::command]
+fn stop_sensor_log(app: AppHandle, state: State<AppState>) -> sensor_log::State {
+    let next = match state.sensor_log.lock().unwrap().take() {
+        Some(l) => sensor_log::State { running: false, ..l.state() },
+        None => state.sensor_log_state.lock().unwrap().clone(),
+    };
+    set_log_state(&app, &state, next.clone());
+    next
+}
+
+#[tauri::command]
+fn get_sensor_log(state: State<AppState>) -> sensor_log::State {
+    state.sensor_log_state.lock().unwrap().clone()
+}
+
+/// Open the sensor log folder in the file manager.
+#[tauri::command]
+fn open_sensor_logs(app: AppHandle) -> Result<(), String> {
+    let dir = sensor_log_dir(&app)?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    remap::launch(&dir.display().to_string());
+    Ok(())
 }
 
 #[tauri::command]
@@ -766,6 +839,8 @@ pub fn run() {
                 store_path: config_dir.join("profiles.json"),
                 sensors: Mutex::new(Vec::new()),
                 battery_watch: Mutex::new(notify::BatteryWatch::default()),
+                sensor_log: Mutex::new(None),
+                sensor_log_state: Mutex::new(sensor_log::State::default()),
             });
             spawn_sensors(app.handle().clone());
             let _ = app.state::<AppState>().save();
@@ -830,7 +905,11 @@ pub fn run() {
             open_url,
             get_mouse_bindings,
             set_mouse_bindings,
-            get_sensors
+            get_sensors,
+            start_sensor_log,
+            stop_sensor_log,
+            get_sensor_log,
+            open_sensor_logs
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
