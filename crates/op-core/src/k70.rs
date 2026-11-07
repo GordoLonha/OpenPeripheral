@@ -161,6 +161,14 @@ impl K70 {
         Ok((n > 1 && buf[0] == 0x03).then(|| buf[1..n].to_vec()))
     }
 
+    /// One command as given (for testing from opctl); at most 64 bytes.
+    pub fn send_raw(&self, payload: &[u8]) -> Result<()> {
+        if payload.is_empty() || payload.len() > REPORT_LEN {
+            return Err(Error::BadReply(format!("a command is 1 to {REPORT_LEN} bytes")));
+        }
+        self.send(payload)
+    }
+
     fn send(&self, payload: &[u8]) -> Result<()> {
         let mut buf = [0u8; REPORT_LEN + 1];
         buf[1..1 + payload.len()].copy_from_slice(payload);
@@ -203,7 +211,8 @@ impl K70 {
     pub fn set_software_mode(&self, on: bool) -> Result<()> {
         let mode = if on { MODE_SOFTWARE } else { MODE_HARDWARE };
         self.send(&[CMD_WRITE, PROP_SPECIAL_FUNCTION, mode])?;
-        // byte 4 = 0x03 selects keyboard lighting (mice use 0x01).
+        // byte 4 = 0x03 selects keyboard lighting (mice use 0x01); 0x00 turns the keys
+        // off and 1..3 all light them fully, so it is not a brightness level (2026-11-07).
         self.send(&[CMD_WRITE, PROP_LIGHTING_CONTROL, mode, 0x00, 0x03])
     }
 
