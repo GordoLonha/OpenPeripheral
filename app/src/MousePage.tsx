@@ -3,6 +3,7 @@ import { api, fromHex, toHex, type DpiStage, type Lighting, type MouseOptions, t
 import { Switch } from './controls';
 import { ZoneEditor } from './LightEditor';
 import { POLLING, useAppSettings } from './settings';
+import { MemoryRow } from './DeviceOptions';
 import { MouseButtons } from './MouseButtons';
 import { MouseArt } from './DeviceArt';
 
@@ -102,6 +103,7 @@ export function MousePage({ status, profiles, tab, keyboard }: {
 
       {tab === 'settings' && (
         <section className="list">
+          <MemoryRow device="mouse" />
           <div className="list-row">
             <div>
               <strong>Taxa de polling</strong>

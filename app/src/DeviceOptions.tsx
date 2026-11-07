@@ -1,4 +1,4 @@
-import { type Status } from './api';
+import { api, type Status } from './api';
 import { POLLING, useAppSettings } from './settings';
 import { Switch } from './controls';
 
@@ -6,6 +6,49 @@ import { Switch } from './controls';
 
 const SLEEP = [0, 1, 5, 10, 15, 30, 60];
 
+
+type MemoryDevice = 'keyboard' | 'mouse' | 'headset';
+const MEMORY_KEY = { keyboard: 'memory_keyboard', mouse: 'memory_mouse', headset: 'memory_headset' } as const;
+const MEMORY_LOSES: Record<MemoryDevice, string> = {
+  keyboard: 'Enquanto isso, as atribuições de tecla, as macros e a tecla Perfil não funcionam; o Win Lock e o brilho ficam com o próprio teclado.',
+  mouse: 'Enquanto isso, as atribuições de botão não funcionam e o DPI fica com o próprio mouse.',
+  headset: 'A bateria continua aparecendo e o equalizador continua valendo; a luz de status e o desligamento automático ficam com o próprio headset.',
+};
+
+/** Device Memory Mode switch: the device runs on what it keeps itself, in every profile. */
+export function MemoryRow({ device }: { device: MemoryDevice }) {
+  const [s, patch] = useAppSettings();
+  const key = MEMORY_KEY[device];
+  const on = !!s?.[key];
+  return (
+    <div className="list-row">
+      <div>
+        <strong>Modo Memória</strong>
+        <p className="muted">
+          O aparelho usa a iluminação e os ajustes guardados nele, como com o app fechado. Os perfis, as cenas e o app deixam ele de lado,
+          em todos os perfis. {MEMORY_LOSES[device]}
+        </p>
+      </div>
+      <Switch on={on} disabled={!s} onClick={() => patch({ [key]: !on })} />
+    </div>
+  );
+}
+
+/** Note on the device's other pages while it is in Memory Mode. */
+export function MemoryNote({ device, status }: { device: MemoryDevice; status: Status | null }) {
+  if (!status?.[device]?.memory) return null;
+  return (
+    <div className="memory-note" role="status">
+      <p>
+        <strong>Modo Memória ligado.</strong> O aparelho está usando a iluminação e os ajustes guardados nele. O que você mudar aqui fica salvo
+        no perfil e vale quando desligar o Modo Memória.
+      </p>
+      <button className="ghost" onClick={() => api.patchAppSettings({ [MEMORY_KEY[device]]: false })}>
+        Desligar
+      </button>
+    </div>
+  );
+}
 
 /** Win Lock and polling rate: kept by the keyboard itself, also with the app closed. */
 export function KeyboardOptions({ status }: { status: Status | null }) {
@@ -19,6 +62,7 @@ export function KeyboardOptions({ status }: { status: Status | null }) {
   ] as const;
   return (
     <section className="list">
+      <MemoryRow device="keyboard" />
       <div className="list-row">
         <div>
           <strong>Win Lock</strong>
@@ -61,6 +105,7 @@ export function HeadsetOptions({ status }: { status: Status | null }) {
   const muted = hs?.mic_muted;
   return (
     <section className="list">
+      <MemoryRow device="headset" />
       <div className="list-row">
         <div>
           <strong>Microfone</strong>
