@@ -59,6 +59,7 @@
   "P": 34,
   "BracketLeft": 35,
   "BracketRight": 79,
+  "Backslash": 80,
   "Delete": 87,
   "End": 88,
   "PageDown": 89,

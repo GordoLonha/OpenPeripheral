@@ -28,6 +28,9 @@
   stopped or for 5 min to 3 hours, in Documentos/OpenPeripheral - sensores.
 - **°C or °F** for temperatures (Configurações → Geral → Sensores): Painel, Início, the
   Temperatura effect and the CSV log.
+- **US and UK keyboards**: Teclado → Ajustes → Layout do teclado draws the K70 as ABNT2,
+  US or UK, with the right keys and names for painting and remapping. Typing still follows
+  the layout set in the system.
 
 ## 0.4.2 — 2026-10-31
 

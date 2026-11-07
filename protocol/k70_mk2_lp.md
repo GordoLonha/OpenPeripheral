@@ -50,8 +50,21 @@ Slot → key: **LED slot = (key % 12) × 12 + key / 12**, the key index matrix t
 12-wide grid (F1 = key 1 → LED 12, F8 = key 8 → LED 96, Win Lock = key 96 → LED 8, `1` = key 13
 → LED 13). Rule read off OpenLinkHub's `database/keyboard/k70mk2.json` (`keyData[1]` vs
 `packetIndex`); ✅ 2026-10-17 with `opctl k70 echo` (F1–F12, lock) and by painting F8, 5, G and
-Profile in the app. `layout/k70_mk2_lp_BR.json` holds key indices; `k70::led_for_key` converts.
+Profile in the app. `layout/k70_mk2_lp.json` holds key indices (all layouts, see Layouts below); `k70::led_for_key` converts.
 Logo LEDs (no key): slots 47 and 59 (OpenLinkHub, not checked).
+
+## Layouts (key indices)
+The ABNT2, US and UK versions share one key matrix: a key has the same index (and LED slot)
+on every layout, only some keys are missing. From OpenLinkHub's `database/keyboard/k70mk2.json`
+(US) and `k70mk2-de.json` (ISO), GPL-3.0; only ABNT2 was checked on hardware here.
+
+| Key | Index | ABNT2 | US (ANSI) | UK (ISO) |
+|---|---|---|---|---|
+| `\` above Enter (`Backslash`) | 80 | — | ✓ | — |
+| `]` / `#` next to Enter (`NonUsTilde`) | 81 | ✓ | — | ✓ |
+| `\` next to left Shift (`NonUsBackslash`) | 49 | ✓ | — | ✓ |
+| `/` next to right Shift (`International1`) | 83 | ✓ | — | — |
+| Enter | 82 | two rows | one row | two rows |
 
 ## Key modes / remapping ✅ (`captures/k70_remap.pcap`)
 `07 40 count 00` followed by `count` pairs `[key index, mode]`, sent in 4 packets

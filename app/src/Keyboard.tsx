@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import type { Lighting } from './api';
-import { BOARD_H, BOARD_W, KEYS } from './layout';
+import { BOARD_H, BOARD_W, keys } from './layout';
 import { previewColor } from './preview';
 
 const U = 52; // px per key unit
@@ -84,7 +84,7 @@ export function Keyboard({ lighting, ledmap, onPaint, painting, onSelectKey, sel
         </filter>
       </defs>
       <rect className="chassis" x={-12} y={-12} width={BOARD_W * U + 24} height={BOARD_H * U + 24} rx={18} />
-      {KEYS.map((key) => {
+      {keys().map((key) => {
         const slot = ledmap[key.id] ?? null;
         const x = key.x * U, y = key.y * U, w = key.w * U - GAP, h = key.h * U - GAP;
         return (
@@ -127,7 +127,7 @@ export function Keyboard({ lighting, ledmap, onPaint, painting, onSelectKey, sel
 /** Normalised key centres per LED slot, sent to the engine for spatial effects. */
 export function geometryFor(ledmap: Record<string, number | null>): Record<number, [number, number]> {
   const out: Record<number, [number, number]> = {};
-  for (const key of KEYS) {
+  for (const key of keys()) {
     const slot = ledmap[key.id];
     if (slot != null) out[slot] = [(key.x + key.w / 2) / BOARD_W, (key.y + key.h / 2) / BOARD_H];
   }

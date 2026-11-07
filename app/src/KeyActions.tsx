@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { DEFAULT_MACRO_OPTIONS, isWindows, type Action, type Bindings } from './api';
 import { Icon, type IconName } from './icons';
-import { KEYS } from './layout';
+import { keys } from './layout';
 import { MacroEditor } from './MacroEditor';
 
 type Kind = Action['kind'];
@@ -85,7 +85,7 @@ export function keyNameFromEvent(e: KeyboardEvent): string | null {
   return e.key.length === 1 ? e.key.toLowerCase() : null;
 }
 
-export const keyLabel = (id: string) => KEYS.find((k) => k.id === id)?.label || (id === 'Space' ? 'Espaço' : id);
+export const keyLabel = (id: string) => keys().find((k) => k.id === id)?.label || (id === 'Space' ? 'Espaço' : id);
 
 export function describe(a: Action): string {
   switch (a.kind) {

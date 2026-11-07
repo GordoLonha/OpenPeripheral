@@ -1,4 +1,5 @@
 import { api, type Status } from './api';
+import { LAYOUTS, type KbLayout } from './layout';
 import { POLLING, useAppSettings } from './settings';
 import { Switch } from './controls';
 
@@ -51,8 +52,12 @@ export function MemoryNote({ device, status }: { device: MemoryDevice; status: S
 }
 
 /** Win Lock and polling rate: kept by the keyboard itself, also with the app closed. */
-export function KeyboardOptions({ status }: { status: Status | null }) {
+export function KeyboardOptions({ status, onLayout }: { status: Status | null; onLayout: (l: KbLayout) => void }) {
   const [s, patch] = useAppSettings();
+  const setLayout = (l: KbLayout) => {
+    onLayout(l);
+    patch({ keyboard_layout: l });
+  };
   // The Win Lock key toggles it on the keyboard: the live state comes with the status.
   const winLock = status?.win_lock ?? s?.win_lock ?? false;
   const combos = [
@@ -63,6 +68,21 @@ export function KeyboardOptions({ status }: { status: Status | null }) {
   return (
     <section className="list">
       <MemoryRow device="keyboard" />
+      <div className="list-row">
+        <div>
+          <strong>Layout do teclado</strong>
+          <p className="muted">
+            O formato do seu K70: muda o desenho e o nome das teclas. Para digitar, o sistema continua usando o layout configurado nele.
+          </p>
+        </div>
+        <div className="seg" role="group" aria-label="Layout do teclado">
+          {LAYOUTS.map(([id, label]) => (
+            <button key={id} className={s?.keyboard_layout === id ? 'on' : ''} disabled={!s} onClick={() => setLayout(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="list-row">
         <div>
           <strong>Win Lock</strong>
