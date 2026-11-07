@@ -50,6 +50,8 @@ pub enum Cmd {
     SetMouseBindings(HashMap<u8, Action>),
     SetKeyboard(KeyboardOptions),
     SetHeadset(HeadsetOptions),
+    /// CPU temperature (°C) for the Temperature effect, from the sensors thread.
+    SetCpuTemp(f32),
     Shutdown(Sender<()>),
 }
 
@@ -140,10 +142,10 @@ fn take_headset(hs: &Hs80, opts: &HeadsetOptions) {
 }
 
 /// Status LED like the headset's own: battery colour, blinking while charging.
-fn headset_frame(lighting: &Lighting, t: f32, info: Option<&HeadsetInfo>, flash: bool) -> [u8; hs80::LED_BYTES] {
+fn headset_frame(lighting: &Lighting, t: f32, temp: f32, info: Option<&HeadsetInfo>, flash: bool) -> [u8; hs80::LED_BYTES] {
     let white = op_core::Rgb::new(255, 255, 255);
     let mut leds = [op_core::Rgb::default(); hs80::LED_COUNT];
-    leds[0] = if flash { white } else { effects::headset(lighting, t) };
+    leds[0] = if flash { white } else { effects::headset(lighting, t, temp) };
     if let Some(p) = info.and_then(|i| i.battery) {
         let blink_off = info.is_some_and(|i| i.charging) && (t * 2.0) as u32 % 2 == 1;
         let [r, g, b] = battery_icon::color(battery_icon::State::Discharging(p));
@@ -367,6 +369,7 @@ fn run(
     };
     let mut geometry = Geometry::new();
     let mut heat = Heat::new();
+    let mut cpu_temp: f32 = 0.0;
     let start = Instant::now();
     let (mut last_scan, mut last_battery, mut last_icue) = (None::<Instant>, Instant::now(), None::<Instant>);
     let mut last_frame = Instant::now();
@@ -395,6 +398,13 @@ fn run(
                 Cmd::SetGeometry(g) => {
                     geometry = g;
                     dirty = true;
+                }
+                Cmd::SetCpuTemp(t) => {
+                    // Whole degrees: the keyboard is only redrawn when the colour can change.
+                    if t.round() != cpu_temp.round() {
+                        dirty |= lighting.effect == effects::Effect::Temperature;
+                    }
+                    cpu_temp = t;
                 }
                 Cmd::SetBindings(b) => {
                     injector.stop_all();
@@ -585,7 +595,7 @@ fn run(
                 }
             }
             if now - mouse_tick >= HS_FRAME {
-                let (logo, wheel) = dev.mouse_opts.zones(&lighting, (now - start).as_secs_f32());
+                let (logo, wheel) = dev.mouse_opts.zones(&lighting, (now - start).as_secs_f32(), cpu_temp);
                 let sniper = mouse_buttons & m65::BUTTON_SNIPER != 0;
                 let frame = (logo, dev.mouse_opts.dpi_color(info.dpi_stage, sniper), wheel);
                 if mouse_last != Some(frame) || now - mouse_sent_at >= HS_KEEPALIVE {
@@ -633,7 +643,7 @@ fn run(
             if now - hs_tick >= HS_FRAME {
                 let flash = flash_until.is_some_and(|t| now < t);
                 let frame =
-                    headset_frame(&lighting, (now - start).as_secs_f32(), dev.status.headset.as_ref(), flash);
+                    headset_frame(&lighting, (now - start).as_secs_f32(), cpu_temp, dev.status.headset.as_ref(), flash);
                 if hs_last_frame != Some(frame) || now - hs_sent_at >= HS_KEEPALIVE {
                     let _ = hs.write_leds(&frame);
                     hs_last_frame = Some(frame);
@@ -698,7 +708,7 @@ fn run(
             heat.decay(dt, lighting.speed);
             if dirty || effects::animated(&lighting, &heat) {
                 if let Some(kb) = &dev.k70 {
-                    let mut frame = effects::render(&lighting, &geometry, (now - start).as_secs_f32(), &heat);
+                    let mut frame = effects::render(&lighting, &geometry, (now - start).as_secs_f32(), cpu_temp, &heat);
                     // Lock symbol shows the Win Lock state, whatever the effect.
                     frame[k70::LED_WINLOCK] =
                         if dev.status.win_lock { op_core::Rgb::new(255, 255, 255) } else { op_core::Rgb::default() };
@@ -769,8 +779,8 @@ mod tests {
             mic_muted: Some(true),
         };
         let mic = |f: [u8; hs80::LED_BYTES]| [f[2], f[5], f[8]];
-        assert_eq!(mic(headset_frame(&Lighting::default(), 0.0, Some(&info), false)), [255, 0, 0]);
+        assert_eq!(mic(headset_frame(&Lighting::default(), 0.0, 0.0, Some(&info), false)), [255, 0, 0]);
         info.mic_muted = Some(false);
-        assert_eq!(mic(headset_frame(&Lighting::default(), 0.0, Some(&info), false)), [0, 0, 0]);
+        assert_eq!(mic(headset_frame(&Lighting::default(), 0.0, 0.0, Some(&info), false)), [0, 0, 0]);
     }
 }

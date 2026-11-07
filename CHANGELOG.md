@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- **New look**: black top bar with Início, Painel and Cenas; profiles in a column on the
+  left (the lit tile is the one in use, + creates one); Início shows each device with its
+  lights live; device pages have a strip of devices on top and a menu on the left.
+- **Painel**: the PC's sensors with value, min / max and a small graph: CPU and GPU
+  temperature and load, GPU fan and power, memory in use, RAM stick and SSD temperatures
+  (Linux; on Windows, CPU load and memory for now). The main ones also show on Início.
+- **Eight new lighting effects**: Ondulação (a ring from each key press), Troca de cor,
+  Faixa de cor, Visor, Chuva, Espiral, Degradê and **Temperatura** (the colour follows the
+  CPU temperature between two points you choose).
+- **Cenas**: 12 animated scenes, including the new effects.
+
 ## 0.4.2 — 2026-10-31
 
 - **Profiles switch by themselves on Linux**: a profile linked to a program now turns on

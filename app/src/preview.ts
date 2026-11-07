@@ -6,6 +6,12 @@ const TAU = Math.PI * 2;
 const ASPECT = 3;
 const RAIN_COLUMNS = 22;
 
+/** CPU temperature for the Temperature effect, kept current by sensors.ts. */
+let cpuTemp = 0;
+export const setPreviewTemp = (t: number) => {
+  cpuTemp = t;
+};
+
 const hue = (h: number): RGB => {
   h = (((h % 360) + 360) % 360) / 60;
   const x = 1 - Math.abs((h % 2) - 1);
@@ -52,6 +58,11 @@ export function previewColor(l: Lighting, slot: number | null, x: number, y: num
       break;
     }
     case 'gradient': c = lerp(l.color, l.color2, x); break;
+    case 'temperature': {
+      const [lo, hi] = l.temps ?? [40, 80];
+      c = lerp(l.color, l.color2, hi > lo ? (cpuTemp - lo) / (hi - lo) : cpuTemp >= hi ? 1 : 0);
+      break;
+    }
   }
   return scale(c, l.brightness);
 }

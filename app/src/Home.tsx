@@ -2,6 +2,7 @@ import type { Lighting, Status } from './api';
 import { DeviceArt, LightSwatch, type DeviceId } from './DeviceArt';
 import { SCENES, connected, deviceName, effectName, sceneLighting, sceneOn } from './fx';
 import { Icon } from './icons';
+import { HomeSensors } from './Dashboard';
 
 type Common = {
   status: Status | null;
@@ -27,9 +28,10 @@ export function SceneGrid({ lighting, onScene, cols }: { lighting: Lighting; onS
   );
 }
 
-export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes }: Common & {
+export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes, onDashboard }: Common & {
   onOpen: (id: DeviceId, settings?: boolean) => void;
   onScenes: () => void;
+  onDashboard: () => void;
 }) {
   const devices = connected(status);
   const hs = status?.headset;
@@ -44,6 +46,13 @@ export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes }: Co
         </div>
         <SceneGrid lighting={lighting} onScene={onScene} cols={2} />
         <p className="muted small">Aplica no perfil em uso: teclado, headset e a luz do mouse que segue o teclado.</p>
+        <div className="home-left-head">
+          <h2>Sensores</h2>
+          <button className="icon-btn" title="Abrir Painel" aria-label="Abrir Painel" onClick={onDashboard}>
+            <Icon name="plus" size={18} />
+          </button>
+        </div>
+        <HomeSensors />
       </aside>
 
       <section className="home-devices">

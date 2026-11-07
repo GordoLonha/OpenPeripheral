@@ -13,6 +13,8 @@ import { BatteryPill, Home, ScenesPage, batteryColor } from './Home';
 import { TopBar, ProfileRail } from './Chrome';
 import { DeviceArt, HeadsetArt, type DeviceId } from './DeviceArt';
 import { EFFECTS, connected, deviceName } from './fx';
+import { Dashboard } from './Dashboard';
+import { startSensors } from './sensors';
 import './App.css';
 
 const SWATCHES: RGB[] = [
@@ -20,7 +22,7 @@ const SWATCHES: RGB[] = [
   [0, 200, 255], [0, 70, 255], [140, 0, 255], [255, 0, 170], [0, 0, 0],
 ];
 
-type Page = 'home' | 'scenes' | 'device' | 'settings';
+type Page = 'home' | 'dashboard' | 'scenes' | 'device' | 'settings';
 type Tool = 'none' | 'paint' | 'erase';
 type KbTab = 'light' | 'keys' | 'settings';
 type HsTab = 'eq' | 'settings';
@@ -81,6 +83,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    startSensors();
     api.status().then(setStatus);
     loadProfileData();
     api.profiles().then((p) => {
@@ -224,6 +227,28 @@ export default function App() {
               <div>
                 <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
                 {!fx.still && <Slider label="Velocidade" value={lighting.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => update({ speed: v })} />}
+                {lighting.effect === 'temperature' && (
+                  <>
+                    <Slider
+                      label="Frio até"
+                      value={(lighting.temps ?? [40, 80])[0]}
+                      min={20}
+                      max={95}
+                      step={1}
+                      unit="°C"
+                      onChange={(v) => update({ temps: [v, Math.max(v + 5, (lighting.temps ?? [40, 80])[1])] })}
+                    />
+                    <Slider
+                      label="Quente a partir de"
+                      value={(lighting.temps ?? [40, 80])[1]}
+                      min={25}
+                      max={100}
+                      step={1}
+                      unit="°C"
+                      onChange={(v) => update({ temps: [Math.min(v - 5, (lighting.temps ?? [40, 80])[0]), v] })}
+                    />
+                  </>
+                )}
               </div>
             </div>
           </section>
@@ -336,7 +361,7 @@ export default function App() {
   return (
     <div className="shell">
       <TopBar
-        tab={page === 'home' || page === 'scenes' ? page : null}
+        tab={page === 'home' || page === 'dashboard' || page === 'scenes' ? page : null}
         onTab={setPage}
         brightness={lighting.brightness}
         onBrightness={(v) => update({ brightness: v })}
@@ -365,7 +390,9 @@ export default function App() {
         ) : null}
 
         {page === 'home' ? (
-          <Home status={status} lighting={lighting} ledmap={ledmap} onScene={onScene} onOpen={openDevice} onScenes={() => setPage('scenes')} />
+          <Home status={status} lighting={lighting} ledmap={ledmap} onScene={onScene} onOpen={openDevice} onScenes={() => setPage('scenes')} onDashboard={() => setPage('dashboard')} />
+        ) : page === 'dashboard' ? (
+          <Dashboard />
         ) : page === 'scenes' ? (
           <ScenesPage status={status} lighting={lighting} ledmap={ledmap} onScene={onScene} />
         ) : page === 'device' ? (

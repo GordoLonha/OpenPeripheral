@@ -546,3 +546,36 @@ button.dpi-label { cursor: pointer; }
 /* The device strip stays put; only the page under it scrolls. */
 .main.page-device { overflow: hidden; }
 .device-page .side-layout { overflow: auto; }
+
+/* ======================================================================
+   Sensors: Painel page and the tiles on Início
+   ====================================================================== */
+.sensor-tile {
+  --c: var(--muted);
+  position: relative; display: flex; flex-direction: column; gap: 1px; min-width: 0;
+  padding: 8px 8px 0; background: var(--panel-2); border-radius: 2px; overflow: hidden; height: 108px;
+}
+.sensor-tile.unit-celsius { --c: var(--warn); }
+.sensor-tile.unit-rpm { --c: #3498db; }
+.sensor-tile.unit-percent { --c: var(--ok); }
+.sensor-tile.unit-watt { --c: #aa5af0; }
+.sensor-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.sensor-name { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sensor-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.sensor-source { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sensor-value { font-size: 17px; color: var(--c); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.sensor-value small { font-size: 13px; color: var(--text); }
+.sensor-range { font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.sensor-graph { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 26px; }
+.sensor-graph polygon { fill: var(--c); opacity: 0.22; }
+.sensor-graph polyline { fill: none; stroke: var(--c); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+
+.home-sensors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+.dashboard {
+  padding: 18px; display: grid; gap: 10px; align-content: start;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+.sensor-group { background: var(--panel); border-radius: var(--r-sm); padding: 14px; display: grid; gap: 10px; align-content: start; }
+.sensor-group h2 { font-size: 14px; font-weight: 400; }
+.sensor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
