@@ -13,6 +13,7 @@ const ZONE_EFFECTS: { id: Effect; name: string; two?: boolean }[] = [
   { id: 'rainbow', name: 'Arco-íris' },
   { id: 'wave', name: 'Onda', two: true },
   { id: 'breathing', name: 'Respiração', two: true },
+  { id: 'colorshift', name: 'Troca de cor', two: true },
 ];
 
 /** M65 RGB Elite: DPI stages, sniper, sensor options and lighting per zone. */

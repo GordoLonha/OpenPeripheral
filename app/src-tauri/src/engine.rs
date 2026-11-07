@@ -643,17 +643,21 @@ fn run(
             }
         }
 
-        // Key presses (for Reactive). Short timeout doubles as the frame pacing.
+        // Key presses (for Reactive and Ripple). Short timeout doubles as the frame pacing.
         let mut lost = false;
         if let Some(kb) = &dev.k70 {
             match kb.read_keys(Duration::from_millis(5)) {
                 Ok(Some(bits)) => {
                     let held = |b: &[u8], i: usize| b.get(i / 8).is_some_and(|x| x & (1 << (i % 8)) != 0);
                     for i in (0..bits.len() * 8).filter(|&i| held(&bits, i)) {
-                        if let Some(led) = k70::led_for_key(i as u8) {
+                        let led = k70::led_for_key(i as u8);
+                        if let Some(led) = led {
                             heat.press(led);
                         }
                         if !held(&prev_keys, i) {
+                            if let Some(led) = led {
+                                heat.ripple(led);
+                            }
                             on_key(i as u8);
                             // Top-left keys are reported to us only; act on them here
                             // (unless remapped).

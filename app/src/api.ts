@@ -2,7 +2,19 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 export type RGB = [number, number, number];
-export type Effect = 'static' | 'rainbow' | 'wave' | 'breathing' | 'reactive';
+export type Effect =
+  | 'static'
+  | 'rainbow'
+  | 'wave'
+  | 'breathing'
+  | 'reactive'
+  | 'colorshift'
+  | 'colorwave'
+  | 'visor'
+  | 'spiral'
+  | 'rain'
+  | 'gradient'
+  | 'ripple';
 
 export type Lighting = {
   effect: Effect;

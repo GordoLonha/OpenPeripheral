@@ -12,12 +12,20 @@ import { ProfileSwitcher, ProfilesPage } from './Profiles';
 import { Home, batteryColor } from './Home';
 import './App.css';
 
-const EFFECTS: { id: Effect; name: string; hint: string; two?: boolean }[] = [
-  { id: 'static', name: 'Cor fixa', hint: 'Uma cor em todo o teclado' },
-  { id: 'rainbow', name: 'Arco-íris', hint: 'Espectro correndo da esquerda para a direita' },
-  { id: 'wave', name: 'Onda', hint: 'Onda entre duas cores', two: true },
-  { id: 'breathing', name: 'Respiração', hint: 'Pulsa suavemente entre duas cores', two: true },
-  { id: 'reactive', name: 'Reativo', hint: 'A tecla acende quando você aperta', two: true },
+/** `colors`: names of the colours the effect uses (none for the rainbow ones). `still`: no speed. */
+const EFFECTS: { id: Effect; name: string; hint: string; colors: string[]; still?: boolean }[] = [
+  { id: 'static', name: 'Cor fixa', hint: 'Uma cor em todo o teclado', colors: ['Cor'], still: true },
+  { id: 'rainbow', name: 'Arco-íris', hint: 'Espectro correndo da esquerda para a direita', colors: [] },
+  { id: 'wave', name: 'Onda', hint: 'Onda entre duas cores', colors: ['Cor 1', 'Cor 2'] },
+  { id: 'breathing', name: 'Respiração', hint: 'Pulsa suavemente entre duas cores', colors: ['Cor 1', 'Cor 2'] },
+  { id: 'reactive', name: 'Reativo', hint: 'A tecla acende quando você aperta', colors: ['Ao apertar', 'Fundo'] },
+  { id: 'ripple', name: 'Ondulação', hint: 'Cada tecla apertada solta um anel de luz', colors: ['Anel', 'Fundo'] },
+  { id: 'colorshift', name: 'Troca de cor', hint: 'O teclado inteiro vai de uma cor à outra e volta', colors: ['Cor 1', 'Cor 2'] },
+  { id: 'colorwave', name: 'Faixa de cor', hint: 'Uma faixa de cor atravessa o teclado', colors: ['Faixa', 'Fundo'] },
+  { id: 'visor', name: 'Visor', hint: 'Uma faixa vai e volta de um lado ao outro', colors: ['Faixa', 'Fundo'] },
+  { id: 'rain', name: 'Chuva', hint: 'Gotas de cor caem pelas colunas', colors: ['Gotas', 'Fundo'] },
+  { id: 'spiral', name: 'Espiral', hint: 'Arco-íris girando em volta do centro', colors: [] },
+  { id: 'gradient', name: 'Degradê', hint: 'Uma cor à esquerda passando para outra à direita', colors: ['Esquerda', 'Direita'], still: true },
 ];
 
 const SWATCHES: RGB[] = [
@@ -275,19 +283,19 @@ export default function App() {
                       <div className="panel">
                         <h2>Cores</h2>
                         <div className="colors">
-                          {lighting.effect !== 'rainbow' && (
-                            <ColorField label={fx.two ? (lighting.effect === 'reactive' ? 'Ao apertar' : 'Cor 1') : 'Cor'} value={lighting.color} onChange={(c) => update({ color: c })} />
+                          {fx.colors.length > 0 && (
+                            <ColorField label={fx.colors[0]} value={lighting.color} onChange={(c) => update({ color: c })} />
                           )}
-                          {fx.two && (
-                            <ColorField label={lighting.effect === 'reactive' ? 'Fundo' : 'Cor 2'} value={lighting.color2} onChange={(c) => update({ color2: c })} />
+                          {fx.colors.length > 1 && (
+                            <ColorField label={fx.colors[1]} value={lighting.color2} onChange={(c) => update({ color2: c })} />
                           )}
-                          {lighting.effect === 'rainbow' && <p className="muted">O arco-íris usa todas as cores.</p>}
+                          {fx.colors.length === 0 && <p className="muted">Este efeito usa todas as cores do arco-íris.</p>}
                         </div>
                       </div>
                       <div className="panel">
                         <h2>Ajustes</h2>
                         <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
-                        {lighting.effect !== 'static' && (
+                        {!fx.still && (
                           <Slider label="Velocidade" value={lighting.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => update({ speed: v })} />
                         )}
                       </div>
