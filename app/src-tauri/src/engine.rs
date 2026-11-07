@@ -54,6 +54,8 @@ pub enum Cmd {
     SetHeadset(HeadsetOptions),
     /// CPU temperature (°C) for the Temperature effect, from the sensors thread.
     SetCpuTemp(f32),
+    /// Device Memory Mode per device.
+    SetMemory(Memory),
     Shutdown(Sender<()>),
 }
 
@@ -85,6 +87,16 @@ impl KeyboardOptions {
     }
 }
 
+/// Device Memory Mode: the device runs on what it keeps itself (its onboard lighting,
+/// its own keys, DPI and status LED) and the app leaves it alone, in every profile.
+/// Nothing is written to the device's memory: it is left in hardware mode.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Memory {
+    pub keyboard: bool,
+    pub mouse: bool,
+    pub headset: bool,
+}
+
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct HeadsetOptions {
     /// Auto power-off after this many idle minutes (0 = never); None = leave as is.
@@ -110,12 +122,16 @@ pub struct MouseInfo {
     pub firmware: String,
     /// Active DPI stage, 0-based (followed from the DPI buttons).
     pub dpi_stage: u8,
+    /// In Memory Mode: plugged in, left to its own settings.
+    pub memory: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct KeyboardInfo {
     pub name: String,
     pub firmware: String,
+    /// In Memory Mode: plugged in, left to its own lighting and keys.
+    pub memory: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -128,6 +144,8 @@ pub struct HeadsetInfo {
     pub firmware: Option<String>,
     /// Boom flipped up. None until the headset answers.
     pub mic_muted: Option<bool>,
+    /// In Memory Mode: battery still read, lighting left to the headset.
+    pub memory: bool,
 }
 
 /// Software mode: the headset then reports wheel clicks, and we draw its LEDs
@@ -197,6 +215,10 @@ struct Devices {
     k70: Option<K70>,
     hs80: Option<Hs80>,
     m65: Option<M65>,
+    /// Keyboard / mouse in Memory Mode: opened only to see they are still there.
+    k70_memory: Option<K70>,
+    m65_memory: Option<M65>,
+    memory: Memory,
     /// DPI stage to select on connect (kept in settings by the app).
     mouse_stage: u8,
     mouse_opts: MouseOptions,
@@ -249,7 +271,9 @@ impl Devices {
     fn rescan(&mut self, swallowed: &[u8]) {
         // Keep scanning while on the receiver: a cabled headset takes precedence.
         let headset_settled = self.hs80.as_ref().is_some_and(|h| h.wired);
-        if self.k70.is_some() && headset_settled && self.m65.is_some() {
+        let has_keyboard = self.k70.is_some() || self.k70_memory.is_some();
+        let has_mouse = self.m65.is_some() || self.m65_memory.is_some();
+        if has_keyboard && headset_settled && has_mouse {
             return;
         }
         let _ = self.api.refresh_devices();
@@ -258,7 +282,7 @@ impl Devices {
                 continue; // untested: read-only until verified
             }
             match found.kind {
-                DeviceKind::LegacyKeyboard if self.k70.is_none() && !self.status.icue_running => {
+                DeviceKind::LegacyKeyboard if !has_keyboard && !self.status.icue_running => {
                     if let Ok(kb) = K70::open(&self.api, &found) {
                         // Polling first, still in hardware mode: the keyboard
                         // re-enumerates, and is picked up again on the next scan.
@@ -269,15 +293,25 @@ impl Devices {
                             continue;
                         }
                         let fw = kb.firmware_info().map(|f| format!("{}.{:02x}", f.version >> 8, f.version & 0xff));
-                        if kb.set_software_mode(true).is_ok() && kb.set_key_modes(swallowed).is_ok() {
-                            self.status.keyboard =
-                                Some(KeyboardInfo { name: found.name.into(), firmware: fw.unwrap_or_else(|_| "?".into()) });
+                        let info = |memory| KeyboardInfo {
+                            name: found.name.into(),
+                            firmware: fw.as_ref().map_or_else(|_| "?".into(), |f| f.clone()),
+                            memory,
+                        };
+                        if self.memory.keyboard {
+                            // Left in hardware mode: onboard lighting, its own keys and Win Lock.
+                            if fw.is_ok() {
+                                self.status.keyboard = Some(info(true));
+                                self.k70_memory = Some(kb);
+                            }
+                        } else if kb.set_software_mode(true).is_ok() && kb.set_key_modes(swallowed).is_ok() {
+                            self.status.keyboard = Some(info(false));
                             self.k70 = Some(kb);
                             self.apply_lock();
                         }
                     }
                 }
-                DeviceKind::LegacyMouse if self.m65.is_none() && !self.status.icue_running => {
+                DeviceKind::LegacyMouse if !has_mouse && !self.status.icue_running => {
                     if let Ok(m) = M65::open(&self.api, &found) {
                         // Polling first, in hardware mode: the mouse re-enumerates.
                         let want = self.mouse_opts.polling_ms;
@@ -288,13 +322,21 @@ impl Devices {
                         }
                         let fw = m.firmware_info().map(|f| format!("{}.{:02x}", f.version >> 8, f.version & 0xff));
                         let stage = self.mouse_stage.min(m65::DPI_STAGES as u8 - 1);
-                        if m.set_software_mode(true).is_ok() {
+                        if self.memory.mouse {
+                            // Left in hardware mode: onboard lighting and DPI.
+                            if let Ok(fw) = &fw {
+                                self.status.mouse =
+                                    Some(MouseInfo { name: found.name.into(), firmware: fw.clone(), dpi_stage: stage, memory: true });
+                                self.m65_memory = Some(m);
+                            }
+                        } else if m.set_software_mode(true).is_ok() {
                             self.mouse_opts.apply(&m, stage);
                             let _ = m.set_button_modes(self.mouse_host_only);
                             self.status.mouse = Some(MouseInfo {
                                 name: found.name.into(),
                                 firmware: fw.unwrap_or_else(|_| "?".into()),
                                 dpi_stage: stage,
+                                memory: false,
                             });
                             self.m65 = Some(m);
                         }
@@ -304,12 +346,14 @@ impl Devices {
                     if self.hs80.is_none() || (found.pid == op_core::hs80::PID_WIRED && !headset_settled) =>
                 {
                     if let Ok(hs) = Hs80::open(&self.api, &found) {
-                        take_headset(&hs, &self.hs_opts);
+                        if !self.memory.headset {
+                            take_headset(&hs, &self.hs_opts);
+                        }
                         let (battery, charging) = read_headset(&hs);
                         let name = if hs.wired { "HS80 RGB (cabo USB)" } else { "HS80 RGB Wireless" };
                         let firmware = hs.firmware().ok();
                         self.status.headset =
-                            Some(HeadsetInfo { name: name.into(), battery, charging, firmware, mic_muted: None });
+                            Some(HeadsetInfo { name: name.into(), battery, charging, firmware, mic_muted: None, memory: self.memory.headset });
                         if let Ok(m) = hs.mic_muted() {
                             self.set_mic_muted(m);
                         }
@@ -323,12 +367,68 @@ impl Devices {
 
     fn drop_mouse(&mut self) {
         self.m65 = None;
+        self.m65_memory = None;
         self.status.mouse = None;
     }
 
     fn drop_keyboard(&mut self) {
         self.k70 = None;
+        self.k70_memory = None;
         self.status.keyboard = None;
+    }
+
+    /// Hand the keyboard back to its firmware (onboard lighting, normal keys).
+    fn release_keyboard(&self) {
+        if let Some(kb) = &self.k70 {
+            let _ = kb.set_software_mode(false);
+            // Leaving software mode clears the lock; set again, it holds.
+            self.apply_lock();
+        }
+    }
+
+    /// Hand the mouse back: every button to normal first (a host-only left button
+    /// would leave it unable to click), then onboard lighting and DPI.
+    fn release_mouse(&self) {
+        if let Some(m) = &self.m65 {
+            let _ = m.set_button_modes(0);
+            let _ = m.set_software_mode(false);
+        }
+    }
+
+    /// Switch devices in or out of Memory Mode. A device that changes is let go
+    /// and picked up again by the next scan in its new mode.
+    fn set_memory(&mut self, memory: Memory) {
+        let old = std::mem::replace(&mut self.memory, memory);
+        if old.keyboard != memory.keyboard {
+            self.release_keyboard();
+            self.drop_keyboard();
+        }
+        if old.mouse != memory.mouse {
+            self.release_mouse();
+            self.drop_mouse();
+        }
+        if old.headset != memory.headset {
+            if let Some(hs) = &self.hs80 {
+                if memory.headset {
+                    let _ = hs.set_software_mode(false); // onboard lighting and status LED
+                } else {
+                    take_headset(hs, &self.hs_opts);
+                }
+            }
+            if let Some(info) = self.status.headset.as_mut() {
+                info.memory = memory.headset;
+            }
+        }
+    }
+
+    /// Keyboard / mouse in Memory Mode: still plugged in? (A read; nothing is changed.)
+    fn check_memory_devices(&mut self) {
+        if self.k70_memory.as_ref().is_some_and(|kb| kb.firmware_info().is_err()) {
+            self.drop_keyboard();
+        }
+        if self.m65_memory.as_ref().is_some_and(|m| m.firmware_info().is_err()) {
+            self.drop_mouse();
+        }
     }
 }
 
@@ -360,6 +460,9 @@ fn run(
         k70: None,
         hs80: None,
         m65: None,
+        k70_memory: None,
+        m65_memory: None,
+        memory: Memory::default(),
         mouse_stage: 2,
         mouse_opts: MouseOptions::default(),
         mouse_host_only: 0,
@@ -410,6 +513,14 @@ fn run(
                     }
                     cpu_temp = t;
                 }
+                Cmd::SetMemory(m) => {
+                    if m != dev.memory {
+                        dev.set_memory(m);
+                        hs_last_frame = None;
+                        mouse_last = None;
+                        last_scan = None; // pick the devices up again now, in their new mode
+                    }
+                }
                 Cmd::SetBindings(b) => {
                     injector.stop_all();
                     bindings = b;
@@ -434,12 +545,17 @@ fn run(
                         let _ = kb.set_polling_ms(o.polling_ms);
                         dev.drop_keyboard();
                         last_scan = Some(Instant::now());
+                    } else if let Some(kb) = dev.k70_memory.as_ref().filter(|_| polling_changed) {
+                        let _ = kb.set_polling_ms(o.polling_ms);
+                        dev.drop_keyboard();
+                        last_scan = Some(Instant::now());
                     }
                 }
                 Cmd::SetHeadset(o) => {
                     let sleep_changed = o.sleep_min != dev.hs_opts.sleep_min;
                     dev.hs_opts = o;
-                    if let (Some(hs), Some(m)) = (&dev.hs80, o.sleep_min.filter(|_| sleep_changed)) {
+                    // Settings writes only take in software mode.
+                    if let (Some(hs), Some(m), false) = (&dev.hs80, o.sleep_min.filter(|_| sleep_changed), dev.memory.headset) {
                         let _ = hs.set_sleep(m);
                     }
                 }
@@ -476,22 +592,19 @@ fn run(
                             dev.mouse_opts.apply(m, dev.mouse_stage);
                         }
                     }
+                    if let Some(m) = dev.m65_memory.as_ref().filter(|_| polling_changed) {
+                        let _ = m.set_polling_ms(dev.mouse_opts.polling_ms);
+                        dev.mouse_polling_sent = Some(dev.mouse_opts.polling_ms);
+                        dev.drop_mouse();
+                        last_scan = Some(Instant::now());
+                    }
                     mouse_last = None;
                 }
                 Cmd::Shutdown(done) => {
                     injector.stop_all();
-                    if let Some(m) = &dev.m65 {
-                        // Every button back to normal first: a host-only left
-                        // button would leave the mouse unable to click.
-                        let _ = m.set_button_modes(0);
-                        let _ = m.set_software_mode(false); // onboard lighting
-                    }
-                    if let Some(kb) = &dev.k70 {
-                        let _ = kb.set_software_mode(false); // onboard lighting + normal keys
-                        // Leaving software mode clears the lock; set again, it holds.
-                        dev.apply_lock();
-                    }
-                    if let Some(hs) = &dev.hs80 {
+                    dev.release_mouse();
+                    dev.release_keyboard();
+                    if let Some(hs) = dev.hs80.as_ref().filter(|_| !dev.memory.headset) {
                         let _ = hs.set_software_mode(false); // onboard status LED + lighting
                     }
                     let _ = done.send(());
@@ -503,20 +616,18 @@ fn run(
         let now = Instant::now();
         if last_icue.is_none_or(|t| now - t > ICUE_CHECK) {
             dev.status.icue_running = icue_running();
-            if dev.status.icue_running && dev.k70.is_some() {
+            if dev.status.icue_running && (dev.k70.is_some() || dev.k70_memory.is_some()) {
                 dev.drop_keyboard(); // let iCUE have it; we take it back when it quits
             }
-            if dev.status.icue_running {
-                if let Some(m) = &dev.m65 {
-                    // Same for the mouse, with its buttons and lighting back to normal.
-                    let _ = m.set_button_modes(0);
-                    let _ = m.set_software_mode(false);
-                    dev.drop_mouse();
-                }
+            if dev.status.icue_running && (dev.m65.is_some() || dev.m65_memory.is_some()) {
+                // Same for the mouse, with its buttons and lighting back to normal.
+                dev.release_mouse();
+                dev.drop_mouse();
             }
             last_icue = Some(now);
         }
         if last_scan.is_none_or(|t| now - t > RESCAN) {
+            dev.check_memory_devices();
             dev.rescan(&swallowed(&bindings));
             if dev.k70.is_some() {
                 dirty = true;
@@ -528,7 +639,9 @@ fn run(
                 let was_off = info.battery.is_none();
                 (info.battery, info.charging) = read_headset(hs);
                 if was_off && info.battery.is_some() {
-                    take_headset(hs, &dev.hs_opts); // powered back on in hardware mode
+                    if !dev.memory.headset {
+                        take_headset(hs, &dev.hs_opts); // powered back on in hardware mode
+                    }
                     info.firmware = hs.firmware().ok();
                     hs_last_frame = None;
                 }
@@ -643,7 +756,7 @@ fn run(
                 Event::Property { .. } => {}
             }
         }
-        if let Some(hs) = &dev.hs80 {
+        if let Some(hs) = dev.hs80.as_ref().filter(|_| !dev.memory.headset) {
             if now - hs_tick >= HS_FRAME {
                 let flash = flash_until.is_some_and(|t| now < t);
                 let frame =
@@ -781,6 +894,7 @@ mod tests {
             charging: false,
             firmware: None,
             mic_muted: Some(true),
+            memory: false,
         };
         let mic = |f: [u8; hs80::LED_BYTES]| [f[2], f[5], f[8]];
         assert_eq!(mic(headset_frame(&Lighting::default(), 0.0, 0.0, Some(&info), false)), [255, 0, 0]);

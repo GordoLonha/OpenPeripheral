@@ -42,7 +42,8 @@ export type SensorUnit = 'celsius' | 'rpm' | 'percent' | 'watt';
 export type Reading = { id: string; group: SensorGroup; source: string; name: string; unit: SensorUnit; value: number };
 
 export type Status = {
-  keyboard: { name: string; firmware: string } | null;
+  /** memory: Device Memory Mode, the device runs on its own settings. */
+  keyboard: { name: string; firmware: string; memory: boolean } | null;
   headset: {
     name: string;
     battery: number | null;
@@ -50,10 +51,11 @@ export type Status = {
     firmware: string | null;
     /** Boom flipped up; null until the headset answers. */
     mic_muted: boolean | null;
+    memory: boolean;
   } | null;
   icue_running: boolean;
   win_lock: boolean;
-  mouse: { name: string; firmware: string; dpi_stage: number } | null;
+  mouse: { name: string; firmware: string; dpi_stage: number; memory: boolean } | null;
 };
 
 export type Eq = { enabled: boolean; preset: string; gains: number[] };
@@ -112,6 +114,10 @@ export type AppSettings = {
   /** M65 DPI stage (0-based) restored on connect. */
   mouse_stage: number;
   mouse: MouseOptions;
+  /** Device Memory Mode: the device keeps its own lighting and settings, in every profile. */
+  memory_keyboard: boolean;
+  memory_mouse: boolean;
+  memory_headset: boolean;
 };
 
 export type DpiStage = { x: number; y: number; color: RGB };

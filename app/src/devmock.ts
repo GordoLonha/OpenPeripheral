@@ -19,6 +19,9 @@ let settings: AppSettings = {
   battery_tray: true,
   notify_battery: true,
   notify_profile: true,
+  memory_keyboard: false,
+  memory_mouse: false,
+  memory_headset: false,
   win_lock: false,
   lock_alt_tab: false,
   lock_alt_f4: false,
@@ -44,11 +47,11 @@ let settings: AppSettings = {
 };
 
 const status: Status = {
-  keyboard: { name: 'K70 RGB MK.2 Low Profile', firmware: '3.24' },
-  headset: { name: 'HS80 RGB Wireless', battery: 64, charging: false, firmware: '5.13', mic_muted: false },
+  keyboard: { name: 'K70 RGB MK.2 Low Profile', firmware: '3.24', memory: false },
+  headset: { name: 'HS80 RGB Wireless', battery: 64, charging: false, firmware: '5.13', mic_muted: false, memory: false },
   icue_running: false,
   win_lock: false,
-  mouse: { name: 'M65 RGB Elite', firmware: '3.41', dpi_stage: 2 },
+  mouse: { name: 'M65 RGB Elite', firmware: '3.41', dpi_stage: 2, memory: false },
 };
 
 const profiles: Profiles = {
@@ -132,7 +135,14 @@ export function installDevMock() {
         case 'get_mouse_bindings': return mouseBindings;
         case 'set_mouse_bindings': mouseBindings = a.bindings as Bindings; return null;
         case 'get_app_settings': return settings;
-        case 'set_app_settings': settings = a.value as AppSettings; return null;
+        case 'set_app_settings':
+          settings = a.value as AppSettings;
+          // Like the engine: Memory Mode shows in the status.
+          if (status.keyboard) status.keyboard.memory = settings.memory_keyboard;
+          if (status.headset) status.headset.memory = settings.memory_headset;
+          if (status.mouse) status.mouse.memory = settings.memory_mouse;
+          void emit('status', structuredClone(status));
+          return null;
         case 'set_mouse_stage': status.mouse!.dpi_stage = a.stage as number; void emit('status', status); return null;
         case 'get_eq': return eq;
         case 'set_eq': eq = a.value as Eq; return null;

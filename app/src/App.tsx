@@ -3,7 +3,7 @@ import { api, toHex, type AppSettings, type Bindings, type Lighting, type Profil
 import { Keyboard, geometryFor } from './Keyboard';
 import { Equalizer } from './Equalizer';
 import { KeyActions } from './KeyActions';
-import { HeadsetOptions, KeyboardOptions } from './DeviceOptions';
+import { HeadsetOptions, KeyboardOptions, MemoryNote } from './DeviceOptions';
 import { ColorField, Slider, Switch } from './controls';
 import { Icon } from './icons';
 import { MousePage, type MouseTab } from './MousePage';
@@ -360,6 +360,7 @@ export default function App() {
             <p className={'dev-state' + (online ? ' ok' : '')}>{online ? 'Conectado' : 'Desconectado'}</p>
           </aside>
           <div className="side-content">
+            {tab !== 'settings' && <MemoryNote device={device} status={status} />}
             {device === 'keyboard' ? (
               keyboardPage()
             ) : device === 'headset' ? (

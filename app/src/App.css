@@ -521,6 +521,12 @@ button.dpi-label { cursor: pointer; }
 .dev-state { color: var(--muted); font-size: 12.5px; }
 .dev-state.ok { color: var(--ok); }
 .side-content { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
+.memory-note {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s4);
+  padding: var(--s3) var(--s4); border-radius: var(--radius);
+  background: var(--accent-soft); border: 1px solid var(--accent-edge);
+}
+.memory-note p { margin: 0; font-size: 13px; }
 .art-stage { display: grid; place-items: center; height: 230px; padding: var(--s4); }
 .art-stage .art { width: auto; height: 100%; }
 

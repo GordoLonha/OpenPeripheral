@@ -77,6 +77,14 @@ struct AppSettings {
     /// Desktop notice when a program switches the profile.
     #[serde(default = "yes")]
     notify_profile: bool,
+    /// Device Memory Mode: the device keeps its own lighting and settings and the
+    /// app leaves it alone, in every profile.
+    #[serde(default)]
+    memory_keyboard: bool,
+    #[serde(default)]
+    memory_mouse: bool,
+    #[serde(default)]
+    memory_headset: bool,
 }
 
 fn two() -> u8 {
@@ -119,6 +127,11 @@ impl AppSettings {
             Cmd::SetHeadset(self.headset()),
             Cmd::SetMouseStage(self.mouse_stage),
             Cmd::SetMouse(self.mouse.clone()),
+            Cmd::SetMemory(engine::Memory {
+                keyboard: self.memory_keyboard,
+                mouse: self.memory_mouse,
+                headset: self.memory_headset,
+            }),
         ]
     }
 
@@ -858,5 +871,32 @@ mod file_tests {
         assert_eq!(read_json::<Store>(&path).unwrap().profiles.len(), 1);
         assert!(!dir.join("profiles.json.tmp").exists());
         fs::remove_dir_all(&dir).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn memory_mode_off_for_old_settings() {
+        // A settings file from before Memory Mode existed.
+        let s: AppSettings = serde_json::from_str(r#"{"win_lock": true, "polling_ms": 2}"#).unwrap();
+        assert!(!s.memory_keyboard && !s.memory_mouse && !s.memory_headset);
+        let memory = s.commands().into_iter().find_map(|c| match c {
+            Cmd::SetMemory(m) => Some(m),
+            _ => None,
+        });
+        assert_eq!(memory, Some(engine::Memory::default()));
+    }
+
+    #[test]
+    fn memory_mode_per_device() {
+        let s: AppSettings = serde_json::from_str(r#"{"memory_mouse": true}"#).unwrap();
+        let memory = s.commands().into_iter().find_map(|c| match c {
+            Cmd::SetMemory(m) => Some(m),
+            _ => None,
+        });
+        assert_eq!(memory, Some(engine::Memory { keyboard: false, mouse: true, headset: false }));
     }
 }

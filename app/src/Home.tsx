@@ -81,13 +81,13 @@ export function Home({ status, lighting, headset, ledmap, onScene, onOpen, onSce
             </div>
             <footer>
               <span>
-                {id === 'headset'
-                  ? hs?.battery == null
-                    ? 'Headset desligado'
-                    : effectName(lighting.effect)
-                  : id === 'mouse'
-                    ? `DPI ${(status?.mouse?.dpi_stage ?? 0) + 1} · ${effectName(lighting.effect)}`
-                    : effectName(lighting.effect)}
+                {id === 'headset' && hs?.battery == null
+                  ? 'Headset desligado'
+                  : status?.[id]?.memory
+                    ? 'Modo Memória'
+                    : id === 'mouse'
+                      ? `DPI ${(status?.mouse?.dpi_stage ?? 0) + 1} · ${effectName(lighting.effect)}`
+                      : effectName(lighting.effect)}
               </span>
               {id === 'headset' && hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
             </footer>

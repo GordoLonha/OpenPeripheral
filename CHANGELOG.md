@@ -20,6 +20,10 @@
 - **Headset lighting of its own**: per profile, the HS80 logo can follow the keyboard (as
   before) or have its own effect, colours, brightness and speed (Headset → Efeitos de
   iluminação). The mouse zones and the headset can also use Temperatura.
+- **Modo Memória** per device (Ajustes of the keyboard, mouse or headset): the device uses
+  the lighting and settings kept in it, as with the app closed, in every profile. The app
+  writes nothing to the device; it just leaves it alone. While on, key and button remaps
+  stop; the headset battery and the equalizer keep working.
 
 ## 0.4.2 — 2026-10-31
 
