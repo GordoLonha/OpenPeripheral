@@ -33,14 +33,23 @@ const hash = (n: number): number => {
   return (x & 0xffff) / 65535;
 };
 
+/** Same as `along` in effects.rs: position along the direction and across it. */
+function along(l: Lighting, x: number, y: number): [number, number] {
+  const d = l.direction ?? 'right';
+  const [p, q] = d === 'left' ? [1 - x, y] : d === 'down' ? [y, x] : d === 'up' ? [1 - y, x] : [x, y];
+  const mirrored = !!l.double_sided && ['rainbow', 'wave', 'colorwave', 'gradient'].includes(l.effect);
+  return [mirrored ? Math.abs(p - 0.5) * 2 : p, q];
+}
+
 export function previewColor(l: Lighting, slot: number | null, x: number, y: number, t: number): RGB {
   if (slot != null && l.painted[slot]) return scale(l.painted[slot], l.brightness);
   const s = l.speed;
+  const [p, q] = along(l, x, y);
   let c: RGB;
   switch (l.effect) {
     case 'static': c = l.color; break;
-    case 'rainbow': c = hue(t * s * 90 - x * 360); break;
-    case 'wave': c = lerp(l.color2, l.color, 0.5 + 0.5 * Math.sin(TAU * (x * 1.5 - t * s * 0.6) + y)); break;
+    case 'rainbow': c = hue(t * s * 90 - p * 360); break;
+    case 'wave': c = lerp(l.color2, l.color, 0.5 + 0.5 * Math.sin(TAU * (p * 1.5 - t * s * 0.6) + q)); break;
     case 'breathing': c = lerp(l.color2, l.color, 0.5 - 0.5 * Math.cos((TAU * t * s) / 3)); break;
     // Key presses only reach the engine, so the preview shows the resting colour.
     case 'reactive':
@@ -48,16 +57,25 @@ export function previewColor(l: Lighting, slot: number | null, x: number, y: num
       c = l.color2;
       break;
     case 'colorshift': c = lerp(l.color, l.color2, 0.5 - 0.5 * Math.cos((TAU * t * s) / 8)); break;
-    case 'colorwave': c = lerp(l.color2, l.color, 1 - Math.abs(fract(x - t * s * 0.35) - 0.5) * 4); break;
-    case 'visor': c = lerp(l.color2, l.color, 1 - Math.abs(x - tri(t * s * 0.25)) * 5); break;
-    case 'spiral': c = hue((Math.atan2(y - 0.5, (x - 0.5) * ASPECT) / TAU) * 360 + t * s * 90); break;
-    case 'rain': {
-      const h = hash(Math.floor(Math.min(Math.max(x, 0), 0.999) * RAIN_COLUMNS));
-      const d = fract(t * s * (0.3 + 0.4 * h) + h) * 1.4 - 0.2 - y;
-      c = lerp(l.color2, l.color, d >= 0 && d < 0.35 ? 1 - d / 0.35 : 0);
+    case 'colorwave': c = lerp(l.color2, l.color, 1 - Math.abs(fract(p - t * s * 0.35) - 0.5) * 4); break;
+    case 'visor': c = lerp(l.color2, l.color, 1 - Math.abs(p - tri(t * s * 0.25)) * 5); break;
+    case 'spiral': {
+      const way = l.direction === 'left' ? -1 : 1;
+      c = hue(way * (Math.atan2(y - 0.5, (x - 0.5) * ASPECT) / TAU) * 360 + t * s * 90);
       break;
     }
-    case 'gradient': c = lerp(l.color, l.color2, x); break;
+    case 'rain': {
+      const col = Math.floor(Math.min(Math.max(x, 0), 0.999) * RAIN_COLUMNS);
+      const h = hash(col);
+      const fall = l.direction === 'up' ? 1 - y : y;
+      const d = fract(t * s * (0.3 + 0.4 * h) + h) * 1.4 - 0.2 - fall;
+      const drop = l.random ? hue(hash(col * 7 + 3) * 360) : l.color;
+      c = lerp(l.color2, drop, d >= 0 && d < 0.35 ? 1 - d / 0.35 : 0);
+      break;
+    }
+    case 'gradient': c = lerp(l.color, l.color2, p); break;
+    // Only lit keys show a colour; the preview has no key presses.
+    case 'type': c = [0, 0, 0]; break;
     case 'temperature': {
       const [lo, hi] = l.temps ?? [40, 80];
       c = lerp(l.color, l.color2, hi > lo ? (cpuTemp - lo) / (hi - lo) : cpuTemp >= hi ? 1 : 0);

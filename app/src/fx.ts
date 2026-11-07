@@ -1,4 +1,4 @@
-import type { Effect, Lighting, Status } from './api';
+import type { Direction, Effect, Lighting, Status } from './api';
 import type { DeviceId } from './DeviceArt';
 
 /** The connected devices, in the order the app shows them. */
@@ -16,20 +16,52 @@ export function deviceName(id: DeviceId, status: Status | null): string {
   return status?.mouse?.name ?? 'M65 RGB Elite';
 }
 
-/** `colors`: names of the colours the effect uses (none for the rainbow ones). `still`: no speed. */
-export const EFFECTS: { id: Effect; name: string; hint: string; colors: string[]; still?: boolean }[] = [
+const FOUR: [Direction, string, string][] = [
+  ['right', '→', 'Para a direita'],
+  ['left', '←', 'Para a esquerda'],
+  ['down', '↓', 'Para baixo'],
+  ['up', '↑', 'Para cima'],
+];
+
+/** `colors`: names of the colours the effect uses (none for the rainbow ones). `still`: no speed.
+ *  `dirs`: directions it can take (value, label, accessible name); `double`: can mirror from the
+ *  middle; `random`: can take random colours. */
+export const EFFECTS: {
+  id: Effect;
+  name: string;
+  hint: string;
+  colors: string[];
+  still?: boolean;
+  dirs?: [Direction, string, string][];
+  double?: boolean;
+  random?: boolean;
+}[] = [
   { id: 'static', name: 'Cor fixa', hint: 'Uma cor em todo o teclado', colors: ['Cor'], still: true },
-  { id: 'rainbow', name: 'Arco-íris', hint: 'Espectro correndo da esquerda para a direita', colors: [] },
-  { id: 'wave', name: 'Onda', hint: 'Onda entre duas cores', colors: ['Cor 1', 'Cor 2'] },
+  { id: 'rainbow', name: 'Arco-íris', hint: 'Espectro correndo pelo teclado', colors: [], dirs: FOUR, double: true },
+  { id: 'wave', name: 'Onda', hint: 'Onda entre duas cores', colors: ['Cor 1', 'Cor 2'], dirs: FOUR, double: true },
   { id: 'breathing', name: 'Respiração', hint: 'Pulsa suavemente entre duas cores', colors: ['Cor 1', 'Cor 2'] },
   { id: 'reactive', name: 'Reativo', hint: 'A tecla acende quando você aperta', colors: ['Ao apertar', 'Fundo'] },
   { id: 'ripple', name: 'Ondulação', hint: 'Cada tecla apertada solta um anel de luz', colors: ['Anel', 'Fundo'] },
   { id: 'colorshift', name: 'Troca de cor', hint: 'O teclado inteiro vai de uma cor à outra e volta', colors: ['Cor 1', 'Cor 2'] },
-  { id: 'colorwave', name: 'Faixa de cor', hint: 'Uma faixa de cor atravessa o teclado', colors: ['Faixa', 'Fundo'] },
-  { id: 'visor', name: 'Visor', hint: 'Uma faixa vai e volta de um lado ao outro', colors: ['Faixa', 'Fundo'] },
-  { id: 'rain', name: 'Chuva', hint: 'Gotas de cor caem pelas colunas', colors: ['Gotas', 'Fundo'] },
-  { id: 'spiral', name: 'Espiral', hint: 'Arco-íris girando em volta do centro', colors: [] },
-  { id: 'gradient', name: 'Degradê', hint: 'Uma cor à esquerda passando para outra à direita', colors: ['Esquerda', 'Direita'], still: true },
+  { id: 'colorwave', name: 'Faixa de cor', hint: 'Uma faixa de cor atravessa o teclado', colors: ['Faixa', 'Fundo'], dirs: FOUR, double: true },
+  { id: 'visor', name: 'Visor', hint: 'Uma faixa vai e volta de um lado ao outro', colors: ['Faixa', 'Fundo'], dirs: FOUR },
+  {
+    id: 'rain',
+    name: 'Chuva',
+    hint: 'Gotas de cor caem pelas colunas',
+    colors: ['Gotas', 'Fundo'],
+    dirs: [['down', 'Caindo', 'Gotas caindo'], ['up', 'Subindo', 'Gotas subindo']],
+    random: true,
+  },
+  {
+    id: 'spiral',
+    name: 'Espiral',
+    hint: 'Arco-íris girando em volta do centro',
+    colors: [],
+    dirs: [['right', 'Anti-horário', 'Girando no sentido anti-horário'], ['left', 'Horário', 'Girando no sentido horário']],
+  },
+  { id: 'gradient', name: 'Degradê', hint: 'Uma cor passando para outra', colors: ['Início', 'Fim'], still: true, dirs: FOUR, double: true },
+  { id: 'type', name: 'Digitação', hint: 'Cada tecla apertada acende, alternando as cores, e apaga aos poucos', colors: ['Cor 1', 'Cor 2'], random: true },
   { id: 'temperature', name: 'Temperatura', hint: 'A cor acompanha a temperatura do processador', colors: ['Frio', 'Quente'], still: true },
 ];
 
