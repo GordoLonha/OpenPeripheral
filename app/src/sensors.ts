@@ -68,7 +68,7 @@ const LABELS: Record<string, string> = {
   'Package id 0': 'Temperatura',
   edge: 'Temperatura',
   junction: 'Ponto mais quente',
-  mem: 'Memória de vídeo (temp.)',
+  mem: 'Temp. da memória',
   PPT: 'Consumo',
   Composite: 'Temperatura',
   'Temp 1': 'Temperatura',
@@ -81,9 +81,11 @@ export function sensorName(r: Reading): string {
   return LABELS[r.name] ?? r.name;
 }
 
-/** The chip names users won't know are left out of the subtitle. */
+/** The chip names users won't know are left out of the subtitle, or named plainly. */
 export function sensorSource(r: Reading): string | null {
-  return ['k10temp', 'zenpower', 'coretemp', 'amdgpu', 'Processador', 'Memória RAM'].includes(r.source) ? null : r.source;
+  if (['k10temp', 'zenpower', 'coretemp', 'amdgpu', 'Processador', 'Memória RAM'].includes(r.source)) return null;
+  if (/^(mt7\d|iwlwifi|ath\d|rtw)/.test(r.source)) return 'Wi-Fi';
+  return r.source;
 }
 
 export const UNIT: Record<SensorUnit, string> = { celsius: '°C', rpm: 'RPM', percent: '%', watt: 'W' };
