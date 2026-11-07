@@ -24,6 +24,10 @@
   the lighting and settings kept in it, as with the app closed, in every profile. The app
   writes nothing to the device; it just leaves it alone. While on, key and button remaps
   stop; the headset battery and the equalizer keep working.
+- **Sensor log in CSV** (Painel → Gravar): every sensor, one row every 1.5 s to 1 min, until
+  stopped or for 5 min to 3 hours, in Documentos/OpenPeripheral - sensores.
+- **°C or °F** for temperatures (Configurações → Geral → Sensores): Painel, Início, the
+  Temperatura effect and the CSV log.
 
 ## 0.4.2 — 2026-10-31
 

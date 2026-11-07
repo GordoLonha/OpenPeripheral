@@ -118,6 +118,19 @@ export type AppSettings = {
   memory_keyboard: boolean;
   memory_mouse: boolean;
   memory_headset: boolean;
+  /** Temperatures shown and logged in °F. */
+  fahrenheit: boolean;
+};
+
+/** CSV sensor log: running or the last one, with its file. */
+export type SensorLogState = { running: boolean; path: string | null; rows: number; error: string | null };
+export type SensorLogRequest = {
+  columns: { id: string; label: string }[];
+  /** A row every this many sensor reads (one read every 1.5 s). */
+  every: number;
+  /** Stop after this many minutes; null = until stopped. */
+  minutes: number | null;
+  fahrenheit: boolean;
 };
 
 export type DpiStage = { x: number; y: number; color: RGB };
@@ -174,6 +187,11 @@ export const api = {
   onStatus: (cb: (s: Status) => void) => listen<Status>('status', (e) => cb(e.payload)),
   sensors: () => invoke<Reading[]>('get_sensors'),
   onSensors: (cb: (r: Reading[]) => void) => listen<Reading[]>('sensors', (e) => cb(e.payload)),
+  sensorLog: () => invoke<SensorLogState>('get_sensor_log'),
+  startSensorLog: (request: SensorLogRequest) => invoke<SensorLogState>('start_sensor_log', { request }),
+  stopSensorLog: () => invoke<SensorLogState>('stop_sensor_log'),
+  openSensorLogs: () => invoke<void>('open_sensor_logs'),
+  onSensorLog: (cb: (s: SensorLogState) => void) => listen<SensorLogState>('sensor-log', (e) => cb(e.payload)),
   /** Lighting changed outside the page (brightness key). */
   onLighting: (cb: (l: Lighting) => void) => listen<Lighting>('lighting', (e) => cb(e.payload)),
   /** EQ changed outside the page (headset wheel click). */

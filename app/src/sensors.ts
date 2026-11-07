@@ -10,6 +10,24 @@ let latest: Reading[] = [];
 const history = new Map<string, number[]>();
 const listeners = new Set<() => void>();
 let started = false;
+/** Temperatures in °F (Configurações → Geral). */
+let fahrenheit = false;
+
+export function setFahrenheit(on: boolean) {
+  fahrenheit = on;
+  listeners.forEach((f) => f());
+}
+
+export function isFahrenheit() {
+  return fahrenheit;
+}
+
+const toF = (c: number) => (c * 9) / 5 + 32;
+
+/** A temperature kept in °C, shown in the chosen unit: "62 °C" / "144 °F". */
+export function formatTemp(c: number): string {
+  return fahrenheit ? `${Math.round(toF(c))} °F` : `${Math.round(c)} °C`;
+}
 
 /** Same choice as sensors::cpu_temp: the CPU's control sensor, else its hottest one. */
 export function cpuTemp(readings: Reading[]): number | null {
@@ -36,6 +54,7 @@ function take(readings: Reading[]) {
 export function startSensors() {
   if (started) return;
   started = true;
+  api.appSettings().then((s) => setFahrenheit(!!s.fahrenheit), () => {});
   api.sensors().then(take, () => {});
   api.onSensors(take);
 }
@@ -88,10 +107,16 @@ export function sensorSource(r: Reading): string | null {
   return r.source;
 }
 
-export const UNIT: Record<SensorUnit, string> = { celsius: '°C', rpm: 'RPM', percent: '%', watt: 'W' };
+const UNIT: Record<SensorUnit, string> = { celsius: '°C', rpm: 'RPM', percent: '%', watt: 'W' };
 
+export function unitLabel(u: SensorUnit): string {
+  return u === 'celsius' && fahrenheit ? '°F' : UNIT[u];
+}
+
+/** Value in the unit shown (temperatures converted to °F when chosen). */
 export function formatValue(r: Reading | number, unit?: SensorUnit): string {
   const v = typeof r === 'number' ? r : r.value;
   const u = typeof r === 'number' ? unit : r.unit;
-  return u === 'rpm' || u === 'percent' || u === 'watt' ? v.toFixed(0) : v.toFixed(1);
+  if (u === 'celsius') return (fahrenheit ? toF(v) : v).toFixed(1);
+  return v.toFixed(0);
 }
