@@ -17,6 +17,8 @@ const zone = (color: [number, number, number]): Lighting => ({ ...lighting, effe
 
 let settings: AppSettings = {
   battery_tray: true,
+  notify_battery: true,
+  notify_profile: true,
   win_lock: false,
   lock_alt_tab: false,
   lock_alt_f4: false,

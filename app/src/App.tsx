@@ -443,9 +443,9 @@ function GeneralSettings() {
     api.autostart().then(setAutostart);
     api.appSettings().then(setAppSettings);
   }, []);
-  const toggleTray = async () => {
+  const flip = async (key: 'battery_tray' | 'notify_battery' | 'notify_profile') => {
     if (!appSettings) return;
-    setAppSettings(await api.patchAppSettings({ battery_tray: !appSettings.battery_tray }));
+    setAppSettings(await api.patchAppSettings({ [key]: !appSettings[key] }));
   };
   const toggle = async () => {
     const next = !autostart;
@@ -468,7 +468,24 @@ function GeneralSettings() {
             <strong>Bateria do fone na bandeja</strong>
             <p>Ícone colorido perto do relógio: verde, amarelo, vermelho; azul com raio ao carregar.</p>
           </div>
-          <Switch on={!!appSettings?.battery_tray} disabled={!appSettings} onClick={toggleTray} />
+          <Switch on={!!appSettings?.battery_tray} disabled={!appSettings} onClick={() => flip('battery_tray')} />
+        </div>
+      </section>
+      <h3 className="section-label">Notificações</h3>
+      <section className="list">
+        <div className="list-row">
+          <div>
+            <strong>Bateria do headset</strong>
+            <p>Avisa quando a bateria do HS80 chega a 20% e a 10%, e quando termina de carregar no cabo.</p>
+          </div>
+          <Switch on={!!appSettings?.notify_battery} disabled={!appSettings} onClick={() => flip('notify_battery')} />
+        </div>
+        <div className="list-row">
+          <div>
+            <strong>Troca automática de perfil</strong>
+            <p>Avisa quando um jogo ou programa ativa outro perfil.</p>
+          </div>
+          <Switch on={!!appSettings?.notify_profile} disabled={!appSettings} onClick={() => flip('notify_profile')} />
         </div>
       </section>
       <h3 className="section-label">Sobre</h3>
