@@ -8,9 +8,12 @@
 - **Painel**: the PC's sensors with value, min / max and a small graph: CPU and GPU
   temperature and load, GPU fan and power, memory in use, RAM stick and SSD temperatures
   (Linux; on Windows, CPU load and memory for now). The main ones also show on Início.
-- **Eight new lighting effects**: Ondulação (a ring from each key press), Troca de cor,
-  Faixa de cor, Visor, Chuva, Espiral, Degradê and **Temperatura** (the colour follows the
-  CPU temperature between two points you choose).
+- **Nine new lighting effects**: Ondulação (a ring from each key press), Digitação (each
+  key lights up in turn colours and fades), Troca de cor, Faixa de cor, Visor, Chuva,
+  Espiral, Degradê and **Temperatura** (the colour follows the CPU temperature between two
+  points you choose).
+- **Effect options**: direction (→ ← ↓ ↑; rain falling or rising; spiral either way),
+  "dos dois lados" to spread from the middle, and random colours for Chuva and Digitação.
 - **Cenas**: 12 animated scenes, including the new effects.
 - **Notifications**: the headset battery at 20% and 10%, and when it is full on the cable;
   a program switching the profile. Each can be turned off in Configurações → Geral.
