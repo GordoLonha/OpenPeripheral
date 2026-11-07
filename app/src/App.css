@@ -579,3 +579,8 @@ button.dpi-label { cursor: pointer; }
 .sensor-group { background: var(--panel); border-radius: var(--r-sm); padding: 14px; display: grid; gap: 10px; align-content: start; }
 .sensor-group h2 { font-size: 14px; font-weight: 400; }
 .sensor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+
+/* Effect options under the colours: direction, both sides, random colours */
+.effect-option { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); min-height: 34px; }
+.effect-option span { color: var(--text); }
+.effect-option .seg button { min-width: 36px; font-size: 15px; }

@@ -666,7 +666,7 @@ fn run(
                         }
                         if !held(&prev_keys, i) {
                             if let Some(led) = led {
-                                heat.ripple(led);
+                                heat.key_down(led);
                             }
                             on_key(i as u8);
                             // Top-left keys are reported to us only; act on them here

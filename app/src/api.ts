@@ -15,7 +15,10 @@ export type Effect =
   | 'rain'
   | 'gradient'
   | 'ripple'
-  | 'temperature';
+  | 'temperature'
+  | 'type';
+
+export type Direction = 'right' | 'left' | 'down' | 'up';
 
 export type Lighting = {
   effect: Effect;
@@ -26,6 +29,11 @@ export type Lighting = {
   painted: Record<string, RGB>; // LED slot -> colour
   /** Temperature effect: °C where the first colour ends and the second is full. */
   temps?: [number, number];
+  direction?: Direction;
+  /** Rainbow, wave, colour wave, gradient: mirrored from the middle. */
+  double_sided?: boolean;
+  /** Rain and Type: random colours. */
+  random?: boolean;
 };
 
 /** One PC sensor (src-tauri/src/sensors.rs). */

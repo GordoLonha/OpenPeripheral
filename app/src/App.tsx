@@ -158,6 +158,12 @@ export default function App() {
 
   if (!lighting) return <div className="boot">Carregando…</div>;
   const fx = EFFECTS.find((e) => e.id === lighting.effect)!;
+  const random = !!fx.random && !!lighting.random;
+  // Random colours replace the drops' colour (Rain) or both colours (Type).
+  const showFirst = fx.colors.length > 0 && !random;
+  const showSecond = fx.colors.length > 1 && !(random && lighting.effect === 'type');
+  // An effect without the saved direction shows (and the engine uses) its first one.
+  const dir = fx.dirs?.some(([d]) => d === lighting.direction) ? lighting.direction : fx.dirs?.[0][0];
   const paintedCount = Object.keys(lighting.painted).length;
   const onScene = (patch: Partial<Lighting>) => update({ ...patch, painted: {} });
 
@@ -220,9 +226,34 @@ export default function App() {
             </div>
             <div className="effect-settings">
               <div className="colors">
-                {fx.colors.length > 0 && <ColorField label={fx.colors[0]} value={lighting.color} onChange={(c) => update({ color: c })} />}
-                {fx.colors.length > 1 && <ColorField label={fx.colors[1]} value={lighting.color2} onChange={(c) => update({ color2: c })} />}
+                {showFirst && <ColorField label={fx.colors[0]} value={lighting.color} onChange={(c) => update({ color: c })} />}
+                {showSecond && <ColorField label={fx.colors[1]} value={lighting.color2} onChange={(c) => update({ color2: c })} />}
                 {fx.colors.length === 0 && <p className="muted">Este efeito usa todas as cores do arco-íris.</p>}
+                {random && lighting.effect === 'type' && <p className="muted">Cada tecla acende numa cor sorteada.</p>}
+                {fx.dirs && (
+                  <div className="effect-option">
+                    <span>Direção</span>
+                    <div className="seg" role="group" aria-label="Direção do efeito">
+                      {fx.dirs.map(([d, label, name]) => (
+                        <button key={d} className={dir === d ? 'on' : ''} aria-label={name} title={name} onClick={() => update({ direction: d })}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {fx.double && (
+                  <div className="effect-option">
+                    <span>Dos dois lados (a partir do meio)</span>
+                    <Switch on={!!lighting.double_sided} onClick={() => update({ double_sided: !lighting.double_sided })} />
+                  </div>
+                )}
+                {fx.random && (
+                  <div className="effect-option">
+                    <span>Cores aleatórias</span>
+                    <Switch on={random} onClick={() => update({ random: !random })} />
+                  </div>
+                )}
               </div>
               <div>
                 <Slider label="Brilho" value={lighting.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => update({ brightness: v })} />
