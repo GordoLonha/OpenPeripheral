@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, fromHex, toHex, type DpiStage, type Effect, type Lighting, type MouseOptions, type Status } from './api';
-import { ColorField, Slider, Switch, Tabs } from './controls';
+import { ColorField, Slider, Switch } from './controls';
 import { POLLING, useAppSettings } from './settings';
 import { MouseButtons } from './MouseButtons';
+import { MouseArt } from './DeviceArt';
 
 const DPI_MIN = 100;
 const DPI_MAX = 18000;
@@ -16,13 +17,20 @@ const ZONE_EFFECTS: { id: Effect; name: string; two?: boolean }[] = [
   { id: 'colorshift', name: 'Troca de cor', two: true },
 ];
 
+export type MouseTab = 'dpi' | 'buttons' | 'light' | 'settings';
+
 /** M65 RGB Elite: DPI stages, sniper, sensor options and lighting per zone. */
-export function MousePage({ status, profiles }: { status: Status | null; profiles: { id: string; name: string }[] }) {
+export function MousePage({ status, profiles, tab, keyboard }: {
+  status: Status | null;
+  profiles: { id: string; name: string }[];
+  tab: MouseTab;
+  /** The keyboard's lighting, which the zones show when they follow it. */
+  keyboard: Lighting;
+}) {
   const [settings, patch] = useAppSettings();
   const [opts, setOpts] = useState<MouseOptions | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const mouse = status?.mouse;
-  const [tab, setTab] = useState<'dpi' | 'buttons' | 'light' | 'settings'>('dpi');
 
   useEffect(() => {
     if (settings && !opts) setOpts(settings.mouse);
@@ -42,18 +50,9 @@ export function MousePage({ status, profiles }: { status: Status | null; profile
 
   return (
     <>
-      <header className="page-head">
-        <div>
-          <h1>Mouse</h1>
-          <p className="page-sub">{mouse ? `${mouse.name} · firmware ${mouse.firmware}` : 'M65 RGB Elite desconectado'}</p>
-        </div>
-        <Tabs
-          label="Seção do mouse"
-          value={tab}
-          onChange={setTab}
-          options={[['dpi', 'DPI'], ['buttons', 'Botões'], ['light', 'Iluminação'], ['settings', 'Ajustes']]}
-        />
-      </header>
+      <section className="stage art-stage">
+        <MouseArt keyboard={keyboard} zones={opts.lighting} />
+      </section>
 
       {tab === 'dpi' && (
         <section className="card">

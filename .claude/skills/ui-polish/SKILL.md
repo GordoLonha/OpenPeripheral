@@ -5,8 +5,8 @@ description: Design system and workflow for OpenPeripheral's desktop UI (Tauri +
 
 # OpenPeripheral UI
 
-Dark, calm, precise: the devices' own lighting is the colour on screen, the chrome stays
-quiet. Interface text is Brazilian Portuguese, short and concrete ("Taxa de polling",
+Flat dark greys, a black top bar and one yellow accent: the devices' own lighting is the
+colour on screen, the chrome stays quiet. Interface text is Brazilian Portuguese, short and concrete ("Taxa de polling",
 "Clique esquerdo"), sentence case, no exclamation marks.
 
 ## See it before and after
@@ -20,14 +20,16 @@ quiet. Interface text is Brazilian Portuguese, short and concrete ("Taxa de poll
 3. `npx tsc -b` and `npm run lint` (no new warnings) before handing back.
 
 ## Tokens (index.css `:root`) — never hard-code these values
-- Surfaces: `--bg` window, `--panel` cards and sidebar, `--panel-2` inputs, list rows,
-  pressed states, `--panel-3` hover. Lines: `--line`, `--line-strong` (hover, focus edges).
+- Surfaces: `--topbar` black top bar, `--rail` profile column, `--strip` device strip,
+  `--bg` window, `--panel` cards and side panels, `--panel-2` inputs and list rows,
+  `--panel-3` option tiles, `--panel-hi` hover and selected tiles/menu rows.
+  Lines: `--line`, `--line-strong` (hover, focus edges).
 - Text: `--text`, `--muted` (descriptions, units, hints), `--faint` (disabled, numbering).
-- Accent `--accent` (cyan) with `--accent-ink` text on it and `--accent-soft` for active
-  backgrounds. Status: `--ok`, `--warn`, `--danger`. Accent marks the one thing that is
+- Accent `--accent` (yellow) with `--accent-ink` text on it, `--accent-soft` for active
+  backgrounds and `--accent-edge` for their outline. Status: `--ok`, `--warn`, `--danger`. Accent marks the one thing that is
   selected or on — never decoration.
 - Spacing: `--s1` 4, `--s2` 8, `--s3` 12, `--s4` 16, `--s5` 24, `--s6` 32 px.
-- Radius: `--r-sm` 8 (inputs, chips, rows), `--r` 12 (cards), `--r-lg` 16 (stages).
+- Radius: `--r-sm` 4 (inputs, tiles, cards), `--r` 6, `--r-lg` 8. Cards have no border.
 
 ## Type
 | Use | Style |
@@ -40,8 +42,16 @@ quiet. Interface text is Brazilian Portuguese, short and concrete ("Taxa de poll
 | Numbers | `font-variant-numeric: tabular-nums` |
 
 ## Layout
-- `.main` content is centred with `max-width: var(--content)` (1240px); every page uses
-  the full content width — no narrow one-off `max-width`.
+- Chrome (`Chrome.tsx`): `.topbar` with the page tabs (Início, Cenas), the general
+  brightness, help and settings; `.rail` with one hexagon tile per profile (the lit one is
+  in use) and a + tile; ">" shows the names.
+- Início: scenes on the left (`SceneGrid`, animated `LightSwatch`), one `.dev-card` per
+  connected device with its live drawing (`DeviceArt.tsx`).
+- Device pages and Configurações: `.side-layout` — `.side-panel` with the name and the
+  `.side-menu` sections on the left, `.side-content` on the right. Device pages also have
+  the `.dev-strip` of device thumbnails on top (it stays put; the page under it scrolls).
+- Pick an effect with `.option` tiles (`.effect-tiles`); the selected one gets a light
+  outline.
 - Page header `.page-head`: title + subtitle left; page tabs or actions right.
 - Navigation inside a page: `.tabs` (underlined). Choosing a value: `.seg` (segmented).
   Never use `.seg` to switch pages.
