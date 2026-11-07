@@ -155,6 +155,9 @@ export const api = {
   status: () => invoke<Status>('get_status'),
   lighting: () => invoke<Lighting>('get_lighting'),
   setLighting: (lighting: Lighting) => invoke<void>('set_lighting', { lighting }),
+  /** The headset's own lighting in the profile in use; null = it follows the keyboard. */
+  headsetLighting: () => invoke<Lighting | null>('get_headset_lighting'),
+  setHeadsetLighting: (lighting: Lighting | null) => invoke<void>('set_headset_lighting', { lighting }),
   /** Key name -> key index (what the keyboard reports; used for remapping). */
   keymap: () => invoke<Record<string, number | null>>('get_keymap'),
   /** Key name -> LED slot (painting, effects). */

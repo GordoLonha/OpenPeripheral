@@ -38,6 +38,8 @@ const WHEEL_FLASH: Duration = Duration::from_millis(350);
 
 pub enum Cmd {
     SetLighting(Lighting),
+    /// The headset logo's own lighting, or None to follow the keyboard.
+    SetHeadsetLighting(Option<Lighting>),
     SetGeometry(Geometry),
     /// LED slot (= key index) -> action.
     SetBindings(HashMap<u8, Action>),
@@ -370,6 +372,7 @@ fn run(
     let mut geometry = Geometry::new();
     let mut heat = Heat::new();
     let mut cpu_temp: f32 = 0.0;
+    let mut headset_lighting: Option<Lighting> = None;
     let start = Instant::now();
     let (mut last_scan, mut last_battery, mut last_icue) = (None::<Instant>, Instant::now(), None::<Instant>);
     let mut last_frame = Instant::now();
@@ -395,6 +398,7 @@ fn run(
                     lighting = l;
                     dirty = true;
                 }
+                Cmd::SetHeadsetLighting(l) => headset_lighting = l,
                 Cmd::SetGeometry(g) => {
                     geometry = g;
                     dirty = true;
@@ -643,7 +647,7 @@ fn run(
             if now - hs_tick >= HS_FRAME {
                 let flash = flash_until.is_some_and(|t| now < t);
                 let frame =
-                    headset_frame(&lighting, (now - start).as_secs_f32(), cpu_temp, dev.status.headset.as_ref(), flash);
+                    headset_frame(headset_lighting.as_ref().unwrap_or(&lighting), (now - start).as_secs_f32(), cpu_temp, dev.status.headset.as_ref(), flash);
                 if hs_last_frame != Some(frame) || now - hs_sent_at >= HS_KEEPALIVE {
                     let _ = hs.write_leds(&frame);
                     hs_last_frame = Some(frame);

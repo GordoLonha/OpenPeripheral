@@ -18,6 +18,9 @@ pub struct Profile {
     pub mouse_bindings: Bindings,
     #[serde(default)]
     pub eq: Eq,
+    /// The headset logo's own lighting; None = follow the keyboard (its centre).
+    #[serde(default)]
+    pub headset_lighting: Option<Lighting>,
     /// Executable names (e.g. "cs2.exe") that switch to this profile while focused.
     #[serde(default)]
     pub apps: Vec<String>,
@@ -51,7 +54,7 @@ impl Store {
     pub fn new_default(lighting: Lighting, bindings: Bindings, eq: Eq) -> Self {
         Self {
             selected: "default".into(),
-            profiles: vec![Profile { id: "default".into(), name: "Padrão".into(), lighting, bindings, mouse_bindings: Default::default(), eq, apps: vec![] }],
+            profiles: vec![Profile { id: "default".into(), name: "Padrão".into(), lighting, bindings, mouse_bindings: Default::default(), eq, headset_lighting: None, apps: vec![] }],
         }
     }
 
@@ -83,6 +86,7 @@ impl Store {
             bindings: Bindings::new(),
             mouse_bindings: Bindings::new(),
             eq: Eq::default(),
+            headset_lighting: None,
             apps: vec![],
         });
         p.id = id.clone();
@@ -137,5 +141,15 @@ mod tests {
         assert!(s.delete("cs-2"));
         assert!(s.delete("cs-2-2"));
         assert!(!s.delete("default"), "last profile is kept");
+    }
+
+    #[test]
+    fn headset_follows_the_keyboard_in_old_files_and_copies_carry_its_own() {
+        let old: Profile = serde_json::from_str(r#"{"id":"default","name":"Padrão"}"#).unwrap();
+        assert!(old.headset_lighting.is_none());
+        let mut s = Store::new_default(Lighting::default(), Bindings::new(), Eq::default());
+        s.get_mut("default").unwrap().headset_lighting = Some(Lighting { color: [1, 2, 3], ..Lighting::default() });
+        let id = s.create("Cópia", "default");
+        assert_eq!(s.get(&id).unwrap().headset_lighting.as_ref().map(|l| l.color), Some([1, 2, 3]));
     }
 }

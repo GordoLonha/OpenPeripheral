@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, fromHex, toHex, type DpiStage, type Effect, type Lighting, type MouseOptions, type Status } from './api';
-import { ColorField, Slider, Switch } from './controls';
+import { api, fromHex, toHex, type DpiStage, type Lighting, type MouseOptions, type Status } from './api';
+import { Switch } from './controls';
+import { ZoneEditor } from './LightEditor';
 import { POLLING, useAppSettings } from './settings';
 import { MouseButtons } from './MouseButtons';
 import { MouseArt } from './DeviceArt';
@@ -8,14 +9,6 @@ import { MouseArt } from './DeviceArt';
 const DPI_MIN = 100;
 const DPI_MAX = 18000;
 const DPI_STEP = 50;
-
-const ZONE_EFFECTS: { id: Effect; name: string; two?: boolean }[] = [
-  { id: 'static', name: 'Cor fixa' },
-  { id: 'rainbow', name: 'Arco-íris' },
-  { id: 'wave', name: 'Onda', two: true },
-  { id: 'breathing', name: 'Respiração', two: true },
-  { id: 'colorshift', name: 'Troca de cor', two: true },
-];
 
 export type MouseTab = 'dpi' | 'buttons' | 'light' | 'settings';
 
@@ -185,29 +178,6 @@ function StageRow(p: { label: string; stage: DpiStage; active?: boolean; hint?: 
         X/Y
       </label>
       <input type="color" className="color-dot" aria-label={`Cor ${p.label}`} value={toHex(p.stage.color)} onChange={(e) => p.onChange({ ...p.stage, color: fromHex(e.target.value) })} />
-    </div>
-  );
-}
-
-function ZoneEditor({ title, value, onChange }: { title: string; value: Lighting; onChange: (l: Lighting) => void }) {
-  const fx = ZONE_EFFECTS.find((e) => e.id === value.effect) ?? ZONE_EFFECTS[0];
-  const set = (p: Partial<Lighting>) => onChange({ ...value, ...p });
-  return (
-    <div className="zone panel">
-      <h3>{title}</h3>
-      <div className="chips">
-        {ZONE_EFFECTS.map((e) => (
-          <button key={e.id} className={'chip' + (e.id === value.effect ? ' on' : '')} onClick={() => set({ effect: e.id })}>
-            {e.name}
-          </button>
-        ))}
-      </div>
-      <div className="colors">
-        {value.effect !== 'rainbow' && <ColorField label={fx.two ? 'Cor 1' : 'Cor'} value={value.color} onChange={(c) => set({ color: c })} />}
-        {fx.two && <ColorField label="Cor 2" value={value.color2} onChange={(c) => set({ color2: c })} />}
-      </div>
-      <Slider label="Brilho" value={value.brightness} min={0} max={100} step={1} unit="%" onChange={(v) => set({ brightness: v })} />
-      {value.effect !== 'static' && <Slider label="Velocidade" value={value.speed} min={0.1} max={3} step={0.1} unit="×" onChange={(v) => set({ speed: v })} />}
     </div>
   );
 }

@@ -76,6 +76,7 @@ let mouseBindings: Bindings = {
     ],
   },
 };
+let headsetLighting: Lighting | null = null;
 let eq: Eq = { enabled: true, preset: 'fps', gains: [-3, -2, -1, 0, 0, 1.5, 3.5, 4.5, 3, 0] };
 
 // ?devices=mouse (or keyboard,headset,...) shows only those, like a PC with just the mouse.
@@ -120,6 +121,8 @@ export function installDevMock() {
       switch (cmd) {
         case 'get_status': return status;
         case 'get_sensors': return readSensors();
+        case 'get_headset_lighting': return headsetLighting;
+        case 'set_headset_lighting': headsetLighting = (a.lighting as Lighting | null) ?? null; return null;
         case 'get_lighting': return lighting;
         case 'get_keymap': return keymap;
         case 'get_ledmap': return ledmap;

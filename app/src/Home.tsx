@@ -7,6 +7,8 @@ import { HomeSensors } from './Dashboard';
 type Common = {
   status: Status | null;
   lighting: Lighting;
+  /** The headset's own lighting (null = it follows the keyboard). */
+  headset: Lighting | null;
   ledmap: Record<string, number | null>;
   onScene: (patch: Partial<Lighting>) => void;
 };
@@ -28,7 +30,7 @@ export function SceneGrid({ lighting, onScene, cols }: { lighting: Lighting; onS
   );
 }
 
-export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes, onDashboard }: Common & {
+export function Home({ status, lighting, headset, ledmap, onScene, onOpen, onScenes, onDashboard }: Common & {
   onOpen: (id: DeviceId, settings?: boolean) => void;
   onScenes: () => void;
   onDashboard: () => void;
@@ -45,7 +47,7 @@ export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes, onDa
           </button>
         </div>
         <SceneGrid lighting={lighting} onScene={onScene} cols={2} />
-        <p className="muted small">Aplica no perfil em uso: teclado, headset e a luz do mouse que segue o teclado.</p>
+        <p className="muted small">Aplica no perfil em uso: no teclado e no headset e no mouse quando eles seguem o teclado.</p>
         <div className="home-left-head">
           <h2>Sensores</h2>
           <button className="icon-btn" title="Abrir Painel" aria-label="Abrir Painel" onClick={onDashboard}>
@@ -75,7 +77,7 @@ export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes, onDa
               </button>
             </header>
             <div className="dev-card-art">
-              <DeviceArt id={id} lighting={lighting} ledmap={ledmap} />
+              <DeviceArt id={id} lighting={lighting} headset={headset} ledmap={ledmap} />
             </div>
             <footer>
               <span>
@@ -97,7 +99,7 @@ export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes, onDa
 }
 
 /** "Cenas": every scene on the left, the devices showing the lighting on the right. */
-export function ScenesPage({ status, lighting, ledmap, onScene }: Common) {
+export function ScenesPage({ status, lighting, headset, ledmap, onScene }: Common) {
   const devices = connected(status);
   return (
     <div className="scenes-page">
@@ -115,7 +117,7 @@ export function ScenesPage({ status, lighting, ledmap, onScene }: Common) {
           {devices.map((id) => (
             <figure key={id} className={'scene-dev ' + id}>
               <figcaption>{deviceName(id, status)}</figcaption>
-              <DeviceArt id={id} lighting={lighting} ledmap={ledmap} />
+              <DeviceArt id={id} lighting={lighting} headset={headset} ledmap={ledmap} />
             </figure>
           ))}
         </div>

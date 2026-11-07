@@ -86,9 +86,10 @@ export function KeyboardArt({ lighting, ledmap }: { lighting: Lighting; ledmap: 
   );
 }
 
-export function DeviceArt({ id, lighting, ledmap }: { id: DeviceId; lighting: Lighting; ledmap: Record<string, number | null> }) {
+/** `headset`: the headset's own lighting, when it does not follow the keyboard. */
+export function DeviceArt({ id, lighting, ledmap, headset }: { id: DeviceId; lighting: Lighting; ledmap: Record<string, number | null>; headset?: Lighting | null }) {
   if (id === 'keyboard') return <KeyboardArt lighting={lighting} ledmap={ledmap} />;
-  if (id === 'headset') return <HeadsetArt lighting={lighting} />;
+  if (id === 'headset') return <HeadsetArt lighting={headset ?? lighting} />;
   return <MouseArt keyboard={lighting} />;
 }
 
