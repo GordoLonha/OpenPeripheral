@@ -6,6 +6,7 @@ mod foreground;
 mod profiles;
 mod mouse;
 mod remap;
+mod sensors;
 #[cfg(target_os = "linux")]
 mod uinput;
 
@@ -129,6 +130,8 @@ struct AppState {
     active: Mutex<Active>,
     status: Mutex<Status>,
     store_path: PathBuf,
+    /// Latest PC sensor readings (Painel page).
+    sensors: Mutex<Vec<sensors::Reading>>,
 }
 
 impl AppState {
@@ -437,6 +440,32 @@ fn update_battery_tray(app: &AppHandle, status: &Status) {
 
 // ---- Misc ----
 
+/// Reads the PC sensors every SENSORS_EVERY: kept for `get_sensors`, sent to the page as a
+/// "sensors" event and the CPU temperature to the engine (Temperature effect).
+const SENSORS_EVERY: Duration = Duration::from_millis(1500);
+
+fn spawn_sensors(app: AppHandle) {
+    let _ = thread::Builder::new().name("sensors".into()).spawn(move || {
+        let mut sensors = sensors::Sensors::new();
+        loop {
+            let readings = sensors.read();
+            if let Some(st) = app.try_state::<AppState>() {
+                if let Some(t) = sensors::cpu_temp(&readings) {
+                    let _ = st.engine.send(Cmd::SetCpuTemp(t));
+                }
+                *st.sensors.lock().unwrap() = readings.clone();
+            }
+            let _ = app.emit("sensors", &readings);
+            thread::sleep(SENSORS_EVERY);
+        }
+    });
+}
+
+#[tauri::command]
+fn get_sensors(state: State<AppState>) -> Vec<sensors::Reading> {
+    state.sensors.lock().unwrap().clone()
+}
+
 #[tauri::command]
 fn get_status(state: State<AppState>) -> Status {
     state.status.lock().unwrap().clone()
@@ -684,7 +713,9 @@ pub fn run() {
                 store: Mutex::new(store),
                 status: Mutex::new(Status::default()),
                 store_path: config_dir.join("profiles.json"),
+                sensors: Mutex::new(Vec::new()),
             });
+            spawn_sensors(app.handle().clone());
             let _ = app.state::<AppState>().save();
             spawn_auto_switch(app.handle().clone());
             #[cfg(unix)]
@@ -744,7 +775,8 @@ pub fn run() {
             install_kind,
             open_url,
             get_mouse_bindings,
-            set_mouse_bindings
+            set_mouse_bindings,
+            get_sensors
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

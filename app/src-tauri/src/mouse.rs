@@ -66,12 +66,12 @@ impl Default for MouseOptions {
 
 impl MouseOptions {
     /// Logo and wheel colours at time `t`.
-    pub fn zones(&self, keyboard: &Lighting, t: f32) -> (Rgb, Rgb) {
+    pub fn zones(&self, keyboard: &Lighting, t: f32, temp: f32) -> (Rgb, Rgb) {
         if self.lighting.follow_keyboard {
-            let c = effects::headset(keyboard, t);
+            let c = effects::headset(keyboard, t, temp);
             (c, c)
         } else {
-            (effects::headset(&self.lighting.logo, t), effects::headset(&self.lighting.wheel, t))
+            (effects::headset(&self.lighting.logo, t, temp), effects::headset(&self.lighting.wheel, t, temp))
         }
     }
 

@@ -30,6 +30,7 @@ export const EFFECTS: { id: Effect; name: string; hint: string; colors: string[]
   { id: 'rain', name: 'Chuva', hint: 'Gotas de cor caem pelas colunas', colors: ['Gotas', 'Fundo'] },
   { id: 'spiral', name: 'Espiral', hint: 'Arco-íris girando em volta do centro', colors: [] },
   { id: 'gradient', name: 'Degradê', hint: 'Uma cor à esquerda passando para outra à direita', colors: ['Esquerda', 'Direita'], still: true },
+  { id: 'temperature', name: 'Temperatura', hint: 'A cor acompanha a temperatura do processador', colors: ['Frio', 'Quente'], still: true },
 ];
 
 export const effectName = (id: Effect) => EFFECTS.find((e) => e.id === id)?.name ?? id;

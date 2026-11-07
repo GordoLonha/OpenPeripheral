@@ -19,7 +19,7 @@ export function Slider(p: { label: string; value: number; min: number; max: numb
     <label className="slider">
       <span>
         {p.label}
-        <output>{p.unit === '%' ? `${p.value}%` : `${p.value.toFixed(1)}×`}</output>
+        <output>{p.unit === '%' ? `${p.value}%` : p.unit === '×' ? `${p.value.toFixed(1)}×` : `${p.value} ${p.unit}`}</output>
       </span>
       <input type="range" min={p.min} max={p.max} step={p.step} value={p.value} onChange={(e) => p.onChange(Number(e.target.value))} />
     </label>

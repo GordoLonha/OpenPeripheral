@@ -4,7 +4,7 @@
 import { emit } from '@tauri-apps/api/event';
 import { mockIPC } from '@tauri-apps/api/mocks';
 import keymapBR from '../../layout/k70_mk2_lp_BR.json';
-import type { AppSettings, Bindings, Eq, Lighting, Profiles, Status } from './api';
+import type { AppSettings, Bindings, Eq, Lighting, Profiles, Reading, Status } from './api';
 
 const keymap = keymapBR as Record<string, number | null>;
 // Same rule as op_core::k70::led_for_key: the key matrix transposed on 12 columns.
@@ -91,12 +91,33 @@ function changed() {
   return null;
 }
 
+// Sensors like a Ryzen + Radeon PC on Linux, moving a little on every read.
+const sensorBase: [Omit<Reading, 'value'>, number, number][] = [
+  [{ id: 'cpu/load', group: 'cpu', source: 'Processador', name: 'Uso', unit: 'percent' }, 18, 14],
+  [{ id: 'k10temp/hwmon4/temp1', group: 'cpu', source: 'k10temp', name: 'Tctl', unit: 'celsius' }, 62, 6],
+  [{ id: 'k10temp/hwmon4/temp3', group: 'cpu', source: 'k10temp', name: 'Tccd1', unit: 'celsius' }, 45, 4],
+  [{ id: 'k10temp/hwmon4/temp4', group: 'cpu', source: 'k10temp', name: 'Tccd2', unit: 'celsius' }, 56, 5],
+  [{ id: 'amdgpu/hwmon3/temp1', group: 'gpu', source: 'amdgpu', name: 'edge', unit: 'celsius' }, 44, 3],
+  [{ id: 'amdgpu/hwmon3/temp2', group: 'gpu', source: 'amdgpu', name: 'junction', unit: 'celsius' }, 47, 3],
+  [{ id: 'amdgpu/hwmon3/fan1', group: 'gpu', source: 'amdgpu', name: 'Ventoinha 1', unit: 'rpm' }, 900, 200],
+  [{ id: 'amdgpu/hwmon3/power1', group: 'gpu', source: 'amdgpu', name: 'PPT', unit: 'watt' }, 52, 20],
+  [{ id: 'card1/busy', group: 'gpu', source: 'amdgpu', name: 'Uso', unit: 'percent' }, 25, 20],
+  [{ id: 'mem/used', group: 'memory', source: 'Memória RAM', name: 'Em uso', unit: 'percent' }, 58, 3],
+  [{ id: 'spd5118/hwmon6/temp1', group: 'memory', source: 'Pente 1', name: 'Temp 1', unit: 'celsius' }, 39, 1],
+  [{ id: 'nvme/hwmon0/temp1', group: 'storage', source: 'KINGSTON SNV2S2000G', name: 'Composite', unit: 'celsius' }, 40, 2],
+  [{ id: 'nvme/hwmon1/temp1', group: 'storage', source: 'WD Green SN350 2TB', name: 'Composite', unit: 'celsius' }, 33, 1],
+];
+const readSensors = (): Reading[] =>
+  sensorBase.map(([r, base, swing]) => ({ ...r, value: Math.max(0, base + swing * (Math.random() - 0.5)) }));
+
 export function installDevMock() {
+  window.setInterval(() => void emit('sensors', readSensors()), 1500);
   mockIPC(
     (cmd, args) => {
       const a = (args ?? {}) as Record<string, unknown>;
       switch (cmd) {
         case 'get_status': return status;
+        case 'get_sensors': return readSensors();
         case 'get_lighting': return lighting;
         case 'get_keymap': return keymap;
         case 'get_ledmap': return ledmap;

@@ -14,7 +14,8 @@ export type Effect =
   | 'spiral'
   | 'rain'
   | 'gradient'
-  | 'ripple';
+  | 'ripple'
+  | 'temperature';
 
 export type Lighting = {
   effect: Effect;
@@ -23,7 +24,14 @@ export type Lighting = {
   speed: number;
   brightness: number;
   painted: Record<string, RGB>; // LED slot -> colour
+  /** Temperature effect: °C where the first colour ends and the second is full. */
+  temps?: [number, number];
 };
+
+/** One PC sensor (src-tauri/src/sensors.rs). */
+export type SensorGroup = 'cpu' | 'gpu' | 'memory' | 'storage' | 'board' | 'other';
+export type SensorUnit = 'celsius' | 'rpm' | 'percent' | 'watt';
+export type Reading = { id: string; group: SensorGroup; source: string; name: string; unit: SensorUnit; value: number };
 
 export type Status = {
   keyboard: { name: string; firmware: string } | null;
@@ -143,6 +151,8 @@ export const api = {
   autostart: () => invoke<boolean>('get_autostart'),
   setAutostart: (enabled: boolean) => invoke<void>('set_autostart', { enabled }),
   onStatus: (cb: (s: Status) => void) => listen<Status>('status', (e) => cb(e.payload)),
+  sensors: () => invoke<Reading[]>('get_sensors'),
+  onSensors: (cb: (r: Reading[]) => void) => listen<Reading[]>('sensors', (e) => cb(e.payload)),
   /** Lighting changed outside the page (brightness key). */
   onLighting: (cb: (l: Lighting) => void) => listen<Lighting>('lighting', (e) => cb(e.payload)),
   /** EQ changed outside the page (headset wheel click). */

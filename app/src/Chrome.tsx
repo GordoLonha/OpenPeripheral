@@ -3,10 +3,11 @@ import { useState } from 'react';
 import { api, type Profiles } from './api';
 import { Icon } from './icons';
 
-export type TopTab = 'home' | 'scenes';
+export type TopTab = 'home' | 'dashboard' | 'scenes';
 
 const TABS: [TopTab, string][] = [
   ['home', 'Início'],
+  ['dashboard', 'Painel'],
   ['scenes', 'Cenas'],
 ];
 

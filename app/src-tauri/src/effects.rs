@@ -28,6 +28,8 @@ pub enum Effect {
     Gradient,
     /// Each key press sends out a ring of the main colour over the second colour.
     Ripple,
+    /// The CPU temperature picks the colour: main colour when cool, second colour when hot.
+    Temperature,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -44,6 +46,13 @@ pub struct Lighting {
     /// Per-key colours painted by the user, drawn over the effect. Key = LED slot.
     #[serde(default)]
     pub painted: HashMap<u16, [u8; 3]>,
+    /// Temperature effect: °C where the main colour ends and where the second one is full.
+    #[serde(default = "default_temps")]
+    pub temps: [f32; 2],
+}
+
+fn default_temps() -> [f32; 2] {
+    [40.0, 80.0]
 }
 
 impl Default for Lighting {
@@ -55,6 +64,7 @@ impl Default for Lighting {
             speed: 1.0,
             brightness: 100,
             painted: HashMap::new(),
+            temps: default_temps(),
         }
     }
 }
@@ -161,9 +171,9 @@ fn ring_strength(rings: &[Ring], x: f32, y: f32, speed: f32) -> f32 {
     })
 }
 
-/// Colour of the effect at (x, y) at time t; `heat` only matters for Reactive
-/// and `rings` only for Ripple.
-fn pixel(l: &Lighting, x: f32, y: f32, t: f32, heat: f32, rings: &[Ring]) -> Rgb {
+/// Colour of the effect at (x, y) at time t; `heat` only matters for Reactive,
+/// `rings` only for Ripple and `temp` (CPU °C) only for Temperature.
+fn pixel(l: &Lighting, x: f32, y: f32, t: f32, temp: f32, heat: f32, rings: &[Ring]) -> Rgb {
     let (c1, c2) = (rgb(l.color), rgb(l.color2));
     let tau = std::f32::consts::TAU;
     let s = l.speed;
@@ -205,6 +215,11 @@ fn pixel(l: &Lighting, x: f32, y: f32, t: f32, heat: f32, rings: &[Ring]) -> Rgb
         }
         Effect::Gradient => lerp(c1, c2, x),
         Effect::Ripple => lerp(c2, c1, ring_strength(rings, x, y, s)),
+        Effect::Temperature => {
+            let [lo, hi] = l.temps;
+            let k = if hi > lo { (temp - lo) / (hi - lo) } else if temp >= hi { 1.0 } else { 0.0 };
+            lerp(c1, c2, k)
+        }
     }
 }
 
@@ -217,7 +232,7 @@ fn place(geo: &Geometry, slot: u16) -> (f32, f32) {
     geo.get(&slot).copied().unwrap_or((slot as f32 / LED_COUNT as f32, 0.5))
 }
 
-pub fn render(l: &Lighting, geo: &Geometry, t: f32, heat: &Heat) -> [Rgb; LED_COUNT] {
+pub fn render(l: &Lighting, geo: &Geometry, t: f32, temp: f32, heat: &Heat) -> [Rgb; LED_COUNT] {
     let rings: Vec<Ring> = if l.effect == Effect::Ripple {
         heat.ripples
             .iter()
@@ -232,7 +247,7 @@ pub fn render(l: &Lighting, geo: &Geometry, t: f32, heat: &Heat) -> [Rgb; LED_CO
     let mut frame = [Rgb::default(); LED_COUNT];
     for (slot, px) in frame.iter_mut().enumerate() {
         let (x, y) = place(geo, slot as u16);
-        *px = pixel(l, x, y, t, heat.keys[slot], &rings);
+        *px = pixel(l, x, y, t, temp, heat.keys[slot], &rings);
         if let Some(&p) = l.painted.get(&(slot as u16)) {
             *px = rgb(p);
         }
@@ -243,8 +258,8 @@ pub fn render(l: &Lighting, geo: &Geometry, t: f32, heat: &Heat) -> [Rgb; LED_CO
 
 /// Headset logo colour: the keyboard effect sampled at the keyboard's centre,
 /// so it moves in step with it (Reactive and Ripple show their resting colour).
-pub fn headset(l: &Lighting, t: f32) -> Rgb {
-    dim(l, pixel(l, 0.5, 0.5, t, 0.0, &[]))
+pub fn headset(l: &Lighting, t: f32, temp: f32) -> Rgb {
+    dim(l, pixel(l, 0.5, 0.5, t, temp, 0.0, &[]))
 }
 
 /// Brightness key: 100 -> 66 -> 33 -> off -> 100 (like the keyboard's own levels).
@@ -260,7 +275,8 @@ pub fn next_brightness(b: u8) -> u8 {
 /// Whether the effect changes over time (so the engine must keep sending frames).
 pub fn animated(l: &Lighting, heat: &Heat) -> bool {
     match l.effect {
-        Effect::Static | Effect::Gradient => false,
+        // Temperature is redrawn when a new reading arrives.
+        Effect::Static | Effect::Gradient | Effect::Temperature => false,
         Effect::Reactive | Effect::Ripple => heat.active(),
         _ => true,
     }
@@ -290,7 +306,7 @@ mod tests {
     fn static_with_paint_and_brightness() {
         let mut l = Lighting { effect: Effect::Static, color: [200, 100, 0], brightness: 50, ..Default::default() };
         l.painted.insert(3, [0, 0, 255]);
-        let f = render(&l, &Geometry::new(), 0.0, &Heat::new());
+        let f = render(&l, &Geometry::new(), 0.0, 0.0, &Heat::new());
         assert_eq!(f[0], Rgb::new(100, 50, 0));
         assert_eq!(f[3], Rgb::new(0, 0, 128));
     }
@@ -300,7 +316,7 @@ mod tests {
         let l = lighting(Effect::Reactive);
         let mut h = Heat::new();
         h.press(5);
-        assert_eq!(render(&l, &Geometry::new(), 0.0, &h)[5], Rgb::new(255, 255, 255));
+        assert_eq!(render(&l, &Geometry::new(), 0.0, 0.0, &h)[5], Rgb::new(255, 255, 255));
         h.decay(1.0, 1.0);
         assert!(!h.active());
     }
@@ -314,17 +330,17 @@ mod tests {
     #[test]
     fn color_shift_is_uniform_and_cycles() {
         let l = lighting(Effect::ColorShift);
-        assert_eq!(pixel(&l, 0.1, 0.2, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
+        assert_eq!(pixel(&l, 0.1, 0.2, 0.0, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
         // Half way through the 8 s cycle every key shows the second colour.
-        assert_eq!(pixel(&l, 0.1, 0.2, 4.0, 0.0, &[]), Rgb::new(0, 0, 0));
-        assert_eq!(pixel(&l, 0.9, 0.8, 4.0, 0.0, &[]), Rgb::new(0, 0, 0));
+        assert_eq!(pixel(&l, 0.1, 0.2, 4.0, 0.0, 0.0, &[]), Rgb::new(0, 0, 0));
+        assert_eq!(pixel(&l, 0.9, 0.8, 4.0, 0.0, 0.0, &[]), Rgb::new(0, 0, 0));
     }
 
     #[test]
     fn gradient_runs_left_to_right_and_is_still() {
         let l = lighting(Effect::Gradient);
-        assert_eq!(pixel(&l, 0.0, 0.5, 3.0, 0.0, &[]), Rgb::new(255, 255, 255));
-        assert_eq!(pixel(&l, 1.0, 0.5, 3.0, 0.0, &[]), Rgb::new(0, 0, 0));
+        assert_eq!(pixel(&l, 0.0, 0.5, 3.0, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
+        assert_eq!(pixel(&l, 1.0, 0.5, 3.0, 0.0, 0.0, &[]), Rgb::new(0, 0, 0));
         assert!(!animated(&l, &Heat::new()));
     }
 
@@ -332,11 +348,11 @@ mod tests {
     fn visor_band_moves() {
         let l = lighting(Effect::Visor);
         // At t = 0 the band is at the left edge.
-        assert_eq!(pixel(&l, 0.0, 0.5, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
-        assert_eq!(pixel(&l, 0.9, 0.5, 0.0, 0.0, &[]), Rgb::new(0, 0, 0));
+        assert_eq!(pixel(&l, 0.0, 0.5, 0.0, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
+        assert_eq!(pixel(&l, 0.9, 0.5, 0.0, 0.0, 0.0, &[]), Rgb::new(0, 0, 0));
         // One second later (speed 1) it is in the middle, after two at the right edge.
-        assert_eq!(pixel(&l, 0.5, 0.5, 1.0, 0.0, &[]), Rgb::new(255, 255, 255));
-        assert_eq!(pixel(&l, 1.0, 0.5, 2.0, 0.0, &[]), Rgb::new(255, 255, 255));
+        assert_eq!(pixel(&l, 0.5, 0.5, 1.0, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
+        assert_eq!(pixel(&l, 1.0, 0.5, 2.0, 0.0, 0.0, &[]), Rgb::new(255, 255, 255));
     }
 
     #[test]
@@ -345,7 +361,7 @@ mod tests {
         let (mut lit, mut total) = (0, 0);
         for step in 0..40 {
             for i in 0..100 {
-                let c = pixel(&l, i as f32 / 100.0, 0.5, step as f32 * 0.37, 0.0, &[]);
+                let c = pixel(&l, i as f32 / 100.0, 0.5, step as f32 * 0.37, 0.0, 0.0, &[]);
                 assert!(c.r == c.g && c.g == c.b);
                 lit += u32::from(c.r > 0);
                 total += 1;
@@ -365,7 +381,7 @@ mod tests {
         h.ripple(10);
         assert!(animated(&l, &h));
         // Fresh ring: lit where the key is.
-        assert_eq!(render(&l, &geo, 0.0, &h)[10], Rgb::new(255, 255, 255));
+        assert_eq!(render(&l, &geo, 0.0, 0.0, &h)[10], Rgb::new(255, 255, 255));
         // 0.4 s later the ring has moved out: dark at the key, lit 0.6 high above it.
         h.decay(0.4, 1.0);
         let rings = [(0.5, 0.5, 0.4)];
@@ -389,9 +405,21 @@ mod tests {
     }
 
     #[test]
+    fn temperature_blends_between_the_points() {
+        let l = Lighting { effect: Effect::Temperature, color: [0, 0, 255], color2: [255, 0, 0], temps: [40.0, 80.0], ..Default::default() };
+        assert_eq!(pixel(&l, 0.3, 0.3, 0.0, 30.0, 0.0, &[]), Rgb::new(0, 0, 255));
+        assert_eq!(pixel(&l, 0.3, 0.3, 0.0, 60.0, 0.0, &[]), Rgb::new(128, 0, 128));
+        assert_eq!(pixel(&l, 0.3, 0.3, 0.0, 95.0, 0.0, &[]), Rgb::new(255, 0, 0));
+        assert!(!animated(&l, &Heat::new()));
+        // Profiles saved before this effect existed load with the default points.
+        let old: Lighting = serde_json::from_str(r#"{"effect":"wave","color":[1,2,3],"color2":[4,5,6],"speed":1.0,"brightness":100}"#).unwrap();
+        assert_eq!(old.temps, [40.0, 80.0]);
+    }
+
+    #[test]
     fn spiral_turns() {
         let l = lighting(Effect::Spiral);
-        assert_ne!(pixel(&l, 0.9, 0.5, 0.0, 0.0, &[]), pixel(&l, 0.1, 0.5, 0.0, 0.0, &[]));
-        assert_ne!(pixel(&l, 0.9, 0.5, 0.0, 0.0, &[]), pixel(&l, 0.9, 0.5, 1.0, 0.0, &[]));
+        assert_ne!(pixel(&l, 0.9, 0.5, 0.0, 0.0, 0.0, &[]), pixel(&l, 0.1, 0.5, 0.0, 0.0, 0.0, &[]));
+        assert_ne!(pixel(&l, 0.9, 0.5, 0.0, 0.0, 0.0, &[]), pixel(&l, 0.9, 0.5, 1.0, 0.0, 0.0, &[]));
     }
 }
