@@ -573,7 +573,7 @@ button.dpi-label { cursor: pointer; }
 .home-sensors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 
 .dashboard {
-  padding: 18px; display: grid; gap: 10px; align-content: start;
+  padding: 18px; display: grid; gap: 10px; align-content: start; align-items: start;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
 }
 .sensor-group { background: var(--panel); border-radius: var(--r-sm); padding: 14px; display: grid; gap: 10px; align-content: start; }
