@@ -1,102 +1,117 @@
-import type { Lighting, Profiles, Status } from './api';
+import type { Lighting, Status } from './api';
+import { DeviceArt, LightSwatch, type DeviceId } from './DeviceArt';
+import { SCENES, connected, deviceName, effectName, sceneLighting, sceneOn } from './fx';
+import { Icon } from './icons';
 
-/** One-click lighting scenes (applied to the active profile). */
-export const SCENES: { id: string; name: string; css: string; patch: Partial<Lighting> }[] = [
-  { id: 'rainbow', name: 'Arco-íris', css: 'linear-gradient(90deg,#ff3b3b,#ffb02e,#f6ff3d,#3dff7a,#3dc8ff,#7a5cff,#ff3df2)', patch: { effect: 'rainbow', speed: 1 } },
-  { id: 'ocean', name: 'Oceano', css: 'linear-gradient(120deg,#003a8c,#00c2ff,#003a8c)', patch: { effect: 'wave', color: [0, 190, 255], color2: [0, 20, 90], speed: 0.8 } },
-  { id: 'sunset', name: 'Pôr do sol', css: 'linear-gradient(120deg,#5a005e,#ff4f6d,#ffb347)', patch: { effect: 'wave', color: [255, 120, 40], color2: [120, 0, 90], speed: 0.6 } },
-  { id: 'aurora', name: 'Aurora', css: 'linear-gradient(120deg,#002b1f,#3dff9a,#7a5cff)', patch: { effect: 'wave', color: [60, 255, 150], color2: [80, 40, 200], speed: 0.5 } },
-  { id: 'calm', name: 'Respirar', css: 'radial-gradient(circle,#b37bff,#2a0b4a)', patch: { effect: 'breathing', color: [170, 110, 255], color2: [10, 0, 30], speed: 0.8 } },
-  { id: 'reactive', name: 'Reativo', css: 'radial-gradient(circle at 35% 50%,#ffffff 0 12%,#00d0ff 13% 30%,#06121c 31%)', patch: { effect: 'reactive', color: [255, 255, 255], color2: [0, 40, 70], speed: 1.2 } },
-  { id: 'white', name: 'Branco', css: '#f2f4f8', patch: { effect: 'static', color: [255, 255, 255] } },
-  { id: 'red', name: 'Vermelho', css: '#ff2a3d', patch: { effect: 'static', color: [255, 20, 30] } },
-];
-
-type Props = {
+type Common = {
   status: Status | null;
-  profiles: Profiles | null;
-  onOpen: (page: 'keyboard' | 'headset' | 'mouse') => void;
+  lighting: Lighting;
+  ledmap: Record<string, number | null>;
   onScene: (patch: Partial<Lighting>) => void;
 };
 
-export function Home({ status, profiles, onOpen, onScene }: Props) {
-  const hs = status?.headset;
-  const anyDevice = !!(status?.keyboard || status?.headset || status?.mouse);
-  const active = profiles?.profiles.find((p) => p.id === profiles.active);
+/** Scene swatches, each one animated with its own lighting. */
+export function SceneGrid({ lighting, onScene, cols }: { lighting: Lighting; onScene: (patch: Partial<Lighting>) => void; cols: 2 | 3 }) {
   return (
-    <>
-      <header className="page-head">
-        <div>
-          <h1>Início</h1>
-          <p className="page-sub">
-            Perfil em uso: <strong className="accent">{active?.name ?? '—'}</strong>
-            {profiles?.auto_app && <> · ativado por {profiles.auto_app}</>}
-          </p>
-        </div>
-      </header>
-
-      {!anyDevice && (
-        <section className="card empty-state">
-          <h2 className="card-title">Nenhum aparelho Corsair encontrado</h2>
-          <p className="muted">
-            Conecte o teclado, o fone ou o mouse: eles aparecem aqui sozinhos.
-            {status?.icue_running && ' Feche o iCUE (bandeja → Sair), senão ele fica com os aparelhos.'}
-          </p>
-        </section>
-      )}
-
-      <section className="device-cards">
-        {status?.keyboard && (
-        <button className="device-card" onClick={() => onOpen('keyboard')}>
-          <KeyboardGlyph />
-          <div>
-            <strong>K70 RGB MK.2 Low Profile</strong>
-            <small>{status?.keyboard ? `conectado · firmware ${status.keyboard.firmware}` : 'desconectado'}</small>
-          </div>
-          <span className={'dot' + (status?.keyboard ? ' online' : '')} aria-hidden />
-        </button>
-        )}
-        {hs && (
-        <button className="device-card" onClick={() => onOpen('headset')}>
-          <HeadsetGlyph />
-          <div>
-            <strong>HS80 RGB Wireless</strong>
-            <small>
-              {!hs ? 'receptor desconectado' : hs.battery == null ? 'headset desligado' : hs.charging ? 'carregando' : 'sem fio'}
-            </small>
-          </div>
-          {hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
-        </button>
-        )}
-        {status?.mouse && (
-          <button className="device-card" onClick={() => onOpen('mouse')}>
-            <MouseGlyph />
-            <div>
-              <strong>{status.mouse.name}</strong>
-              <small>
-                firmware {status.mouse.firmware} · DPI {status.mouse.dpi_stage + 1}
-              </small>
-            </div>
-            <span className="dot online" aria-hidden />
+    <div className={`scene-grid cols-${cols}`}>
+      {SCENES.map((s) => {
+        const on = sceneOn(lighting, s.patch);
+        return (
+          <button key={s.id} className={'scene' + (on ? ' on' : '')} aria-pressed={on} onClick={() => onScene(s.patch)}>
+            <LightSwatch lighting={sceneLighting(s.patch)} />
+            <span>{s.name}</span>
           </button>
-        )}
-      </section>
+        );
+      })}
+    </div>
+  );
+}
 
-      {(status?.keyboard || status?.mouse) && (
-      <section className="home-section">
-        <h2>Cenas de iluminação</h2>
-        <div className="scenes">
-          {SCENES.map((s) => (
-            <button key={s.id} className="scene" onClick={() => onScene(s.patch)}>
-              <span className="scene-swatch" style={{ background: s.css }} aria-hidden />
-              <span>{s.name}</span>
-            </button>
+export function Home({ status, lighting, ledmap, onScene, onOpen, onScenes }: Common & {
+  onOpen: (id: DeviceId, settings?: boolean) => void;
+  onScenes: () => void;
+}) {
+  const devices = connected(status);
+  const hs = status?.headset;
+  return (
+    <div className="home">
+      <aside className="home-left">
+        <div className="home-left-head">
+          <h2>Cenas</h2>
+          <button className="icon-btn" title="Abrir Cenas" aria-label="Abrir Cenas" onClick={onScenes}>
+            <Icon name="plus" size={18} />
+          </button>
+        </div>
+        <SceneGrid lighting={lighting} onScene={onScene} cols={2} />
+        <p className="muted small">Aplica no perfil em uso: teclado, headset e a luz do mouse que segue o teclado.</p>
+      </aside>
+
+      <section className="home-devices">
+        {devices.length === 0 && (
+          <div className="empty-devices">
+            <h2>Nenhum aparelho Corsair encontrado</h2>
+            <p className="muted">
+              Conecte o teclado, o fone ou o mouse: eles aparecem aqui sozinhos.
+              {status?.icue_running && ' Feche o iCUE (bandeja → Sair), senão ele fica com os aparelhos.'}
+            </p>
+          </div>
+        )}
+        {devices.map((id) => (
+          <article key={id} className="dev-card">
+            <button className="dev-card-open" aria-label={`Abrir ${deviceName(id, status)}`} onClick={() => onOpen(id)} />
+            <header>
+              <h3>{deviceName(id, status)}</h3>
+              <button className="icon-btn" title="Ajustes do aparelho" aria-label={`Ajustes de ${deviceName(id, status)}`} onClick={() => onOpen(id, true)}>
+                <Icon name="settings" size={17} />
+              </button>
+            </header>
+            <div className="dev-card-art">
+              <DeviceArt id={id} lighting={lighting} ledmap={ledmap} />
+            </div>
+            <footer>
+              <span>
+                {id === 'headset'
+                  ? hs?.battery == null
+                    ? 'Headset desligado'
+                    : effectName(lighting.effect)
+                  : id === 'mouse'
+                    ? `DPI ${(status?.mouse?.dpi_stage ?? 0) + 1} · ${effectName(lighting.effect)}`
+                    : effectName(lighting.effect)}
+              </span>
+              {id === 'headset' && hs?.battery != null && <BatteryPill pct={hs.battery} charging={hs.charging} />}
+            </footer>
+          </article>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+/** "Cenas": every scene on the left, the devices showing the lighting on the right. */
+export function ScenesPage({ status, lighting, ledmap, onScene }: Common) {
+  const devices = connected(status);
+  return (
+    <div className="scenes-page">
+      <aside className="scenes-left">
+        <h2>Cenas</h2>
+        <p className="muted small">Clique numa cena para usar no perfil em uso. Para ajustar cores e velocidade, abra o teclado.</p>
+        <SceneGrid lighting={lighting} onScene={onScene} cols={3} />
+      </aside>
+      <section className="scenes-stage">
+        <div className="scenes-now">
+          Em uso: <strong>{effectName(lighting.effect)}</strong>
+        </div>
+        <div className="scenes-devices">
+          {devices.length === 0 && <p className="muted">Conecte um aparelho para ver a cena nele.</p>}
+          {devices.map((id) => (
+            <figure key={id} className={'scene-dev ' + id}>
+              <figcaption>{deviceName(id, status)}</figcaption>
+              <DeviceArt id={id} lighting={lighting} ledmap={ledmap} />
+            </figure>
           ))}
         </div>
-        <p className="muted small">Aplica no perfil em uso, no teclado e na luz do mouse que segue o teclado.</p>
       </section>
-      )}
-    </>
+    </div>
   );
 }
 
@@ -110,36 +125,10 @@ export function batteryColor(pct: number, charging: boolean): string {
 export function BatteryPill({ pct, charging }: { pct: number; charging: boolean }) {
   return (
     <span className="battery-pill" style={{ color: batteryColor(pct, charging) }}>
+      {pct.toFixed(0)}%{charging && ' ⚡'}
       <span className="battery-shape" aria-hidden>
         <span style={{ width: `${Math.max(8, pct)}%`, background: batteryColor(pct, charging) }} />
       </span>
-      {pct.toFixed(0)}%{charging && ' ⚡'}
     </span>
   );
 }
-
-const KeyboardGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <rect x="1" y="4" width="62" height="24" rx="4" />
-    {Array.from({ length: 3 }, (_, r) =>
-      Array.from({ length: 11 }, (_, c) => <rect key={`${r}-${c}`} className="k" x={5 + c * 5} y={8 + r * 5} width="3.6" height="3.6" rx="0.8" />),
-    )}
-    <rect className="k" x="15" y="23" width="30" height="3" rx="0.8" />
-  </svg>
-);
-
-const MouseGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <rect x="24" y="2" width="16" height="28" rx="8" fill="none" strokeWidth="3" />
-    <path d="M32 2v10" fill="none" strokeWidth="3" />
-  </svg>
-);
-
-const HeadsetGlyph = () => (
-  <svg className="device-glyph" viewBox="0 0 64 32" aria-hidden>
-    <path d="M18 22v-6a14 14 0 0 1 28 0v6" fill="none" strokeWidth="3" />
-    <rect x="13" y="18" width="8" height="12" rx="3" />
-    <rect x="43" y="18" width="8" height="12" rx="3" />
-  </svg>
-);
-

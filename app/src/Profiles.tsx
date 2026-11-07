@@ -2,55 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { api, isWindows, type ProfileInfo, type Profiles } from './api';
 import { Icon } from './icons';
 
-/** Compact switcher for the sidebar. */
-export function ProfileSwitcher({ data, onManage }: { data: Profiles; onManage: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const active = data.profiles.find((p) => p.id === data.active);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
-  }, [open]);
-
-  return (
-    <div className="profile-switch" ref={ref}>
-      <button className="profile-current" onClick={() => setOpen(!open)} aria-expanded={open}>
-        <span>
-          <small>Perfil</small>
-          <strong>{active?.name ?? '—'}</strong>
-        </span>
-        <span className="chev" aria-hidden>▾</span>
-      </button>
-      {data.auto_app && <div className="auto-badge">auto · {data.auto_app}</div>}
-      {open && (
-        <div className="profile-menu" role="menu">
-          {data.profiles.map((p) => (
-            <button
-              key={p.id}
-              role="menuitemradio"
-              aria-checked={p.id === data.active}
-              className={p.id === data.active ? 'on' : ''}
-              onClick={() => {
-                api.selectProfile(p.id);
-                setOpen(false);
-              }}
-            >
-              {p.name}
-              {p.apps.length > 0 && <small>{p.apps.length} app{p.apps.length > 1 ? 's' : ''}</small>}
-            </button>
-          ))}
-          <button className="manage" onClick={() => { setOpen(false); onManage(); }}>
-            Gerenciar perfis…
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** Full page: create, rename, delete, and link programs for automatic switching. */
 export function ProfilesPage({ data }: { data: Profiles }) {
   const [name, setName] = useState('');

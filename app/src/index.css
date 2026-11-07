@@ -1,25 +1,30 @@
 :root {
-  /* Surfaces */
-  --bg: #0a0c11;
-  --panel: #11151d;
-  --panel-2: #171c26;
-  --panel-3: #1d2330;
-  --line: #222936;
-  --line-strong: #323b4c;
+  /* Surfaces: flat greys, darkest at the top bar */
+  --topbar: #080808;
+  --bg: #1b1b1b;
+  --rail: #262626;
+  --strip: #212121;
+  --panel: #232323;
+  --panel-2: #2e2e2e;
+  --panel-3: #3a3a3a;
+  --panel-hi: #484848;
+  --line: #303030;
+  --line-strong: #4a4a4a;
   /* Text */
-  --text: #e8ecf3;
-  --muted: #8a94a7;
-  --faint: #5c6578;
+  --text: #ececec;
+  --muted: #969696;
+  --faint: #6a6a6a;
   /* Accent and status */
-  --accent: #39d0f0;
-  --accent-ink: #04222b;
-  --accent-soft: rgba(57, 208, 240, 0.12);
-  --warn: #f5b84a;
-  --danger: #ff5d6c;
-  --ok: #3ddc84;
+  --accent: #ece81a;
+  --accent-ink: #141414;
+  --accent-soft: rgba(236, 232, 26, 0.12);
+  --accent-edge: rgba(236, 232, 26, 0.5);
+  --warn: #f39c12;
+  --danger: #ff5a5a;
+  --ok: #62c846;
   /* Keyboard drawing */
-  --cap: #191d25;
-  --cap-edge: #2a3140;
+  --cap: #1c1c1c;
+  --cap-edge: #343434;
   /* Spacing and shape */
   --s1: 4px;
   --s2: 8px;
@@ -27,9 +32,9 @@
   --s4: 16px;
   --s5: 24px;
   --s6: 32px;
-  --r-sm: 8px;
-  --r: 12px;
-  --r-lg: 16px;
+  --r-sm: 4px;
+  --r: 6px;
+  --r-lg: 8px;
   --radius: var(--r);
   --content: 1240px;
   --control-h: 34px;
@@ -54,6 +59,8 @@ h2 { font-size: 15px; }
 h3 { font-size: 14px; }
 p { margin: 0; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* main.tsx sets data-keys while the keyboard is used; after a click no ring (WebKitGTK shows one). */
+:root:not([data-keys]) :focus-visible { outline: none; }
 ::selection { background: var(--accent-soft); }
 .boot { display: grid; place-items: center; height: 100%; color: var(--muted); }
 

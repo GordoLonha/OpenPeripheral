@@ -9,6 +9,13 @@ if (import.meta.env.DEV && !('__TAURI_INTERNALS__' in window)) {
   installDevMock()
 }
 
+// Focus rings only while the keyboard is in use: WebKitGTK also shows them after a click.
+const root = document.documentElement
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab' || e.key.startsWith('Arrow')) root.dataset.keys = ''
+}, true)
+window.addEventListener('pointerdown', () => delete root.dataset.keys, true)
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
