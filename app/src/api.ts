@@ -88,6 +88,10 @@ export type Profiles = { selected: string; active: string; auto_app: string | nu
 
 export type AppSettings = {
   battery_tray: boolean;
+  /** Desktop notice for low / charged headset battery. */
+  notify_battery: boolean;
+  /** Desktop notice when a program switches the profile. */
+  notify_profile: boolean;
   win_lock: boolean;
   lock_alt_tab: boolean;
   lock_alt_f4: boolean;

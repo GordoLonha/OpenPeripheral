@@ -12,6 +12,8 @@
   Faixa de cor, Visor, Chuva, Espiral, Degradê and **Temperatura** (the colour follows the
   CPU temperature between two points you choose).
 - **Cenas**: 12 animated scenes, including the new effects.
+- **Notifications**: the headset battery at 20% and 10%, and when it is full on the cable;
+  a program switching the profile. Each can be turned off in Configurações → Geral.
 
 ## 0.4.2 — 2026-10-31
 

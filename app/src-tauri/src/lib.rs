@@ -5,6 +5,7 @@ mod eq;
 mod foreground;
 mod profiles;
 mod mouse;
+mod notify;
 mod remap;
 mod sensors;
 #[cfg(target_os = "linux")]
@@ -70,6 +71,12 @@ struct AppSettings {
     /// M65 DPI stages, sniper, polling, angle snapping, lighting.
     #[serde(default)]
     mouse: mouse::MouseOptions,
+    /// Desktop notice when the headset battery is low, and when it is charged.
+    #[serde(default = "yes")]
+    notify_battery: bool,
+    /// Desktop notice when a program switches the profile.
+    #[serde(default = "yes")]
+    notify_profile: bool,
 }
 
 fn two() -> u8 {
@@ -132,6 +139,8 @@ struct AppState {
     store_path: PathBuf,
     /// Latest PC sensor readings (Painel page).
     sensors: Mutex<Vec<sensors::Reading>>,
+    /// Which headset battery notices were already shown.
+    battery_watch: Mutex<notify::BatteryWatch>,
 }
 
 impl AppState {
@@ -586,7 +595,13 @@ fn spawn_auto_switch(app: AppHandle) {
         }
         last = Some(target.clone());
         if st.active_id() != target {
-            activate(&app, &target, auto);
+            activate(&app, &target, auto.clone());
+            if let Some(program) = auto.filter(|_| st.settings.lock().unwrap().notify_profile) {
+                let name = st.store.lock().unwrap().get(&target).map(|p| p.name.clone());
+                if let Some(name) = name {
+                    notify::show(&app, &notify::Note::ProfileAuto(name, program));
+                }
+            }
         }
     });
 }
@@ -613,6 +628,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![MINIMIZED_ARG]),
@@ -651,6 +667,13 @@ pub fn run() {
                             s.win_lock = status.win_lock;
                             s.mouse_stage = stage;
                             let _ = write_atomic(&st.settings_path, &serde_json::to_string_pretty(&*s).unwrap_or_default());
+                        }
+                        let wanted = s.notify_battery;
+                        drop(s);
+                        let hs = status.headset.as_ref();
+                        let note = st.battery_watch.lock().unwrap().update(hs.and_then(|h| h.battery), hs.is_some_and(|h| h.charging));
+                        if let Some(note) = note.filter(|_| wanted) {
+                            notify::show(&status_handle, &note);
                         }
                     }
                     let _ = status_handle.emit("status", status);
@@ -714,6 +737,7 @@ pub fn run() {
                 status: Mutex::new(Status::default()),
                 store_path: config_dir.join("profiles.json"),
                 sensors: Mutex::new(Vec::new()),
+                battery_watch: Mutex::new(notify::BatteryWatch::default()),
             });
             spawn_sensors(app.handle().clone());
             let _ = app.state::<AppState>().save();
