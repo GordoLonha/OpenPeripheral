@@ -14,6 +14,7 @@ import { TopBar, ProfileRail } from './Chrome';
 import { DeviceArt, HeadsetArt, type DeviceId } from './DeviceArt';
 import { EFFECTS, connected, deviceName } from './fx';
 import { Dashboard } from './Dashboard';
+import { HeadsetLighting } from './LightEditor';
 import { startSensors } from './sensors';
 import './App.css';
 
@@ -25,14 +26,14 @@ const SWATCHES: RGB[] = [
 type Page = 'home' | 'dashboard' | 'scenes' | 'device' | 'settings';
 type Tool = 'none' | 'paint' | 'erase';
 type KbTab = 'light' | 'keys' | 'settings';
-type HsTab = 'eq' | 'settings';
+type HsTab = 'eq' | 'light' | 'settings';
 type SettingsTab = 'general' | 'profiles' | 'updates';
 type DevTabs = { keyboard: KbTab; headset: HsTab; mouse: MouseTab };
 
 /** Menu of each device page, left of the drawing. */
 const DEV_MENU: { [K in DeviceId]: [DevTabs[K], string][] } = {
   keyboard: [['light', 'Efeitos de iluminação'], ['keys', 'Atribuições de tecla'], ['settings', 'Ajustes']],
-  headset: [['eq', 'Equalizador'], ['settings', 'Ajustes']],
+  headset: [['eq', 'Equalizador'], ['light', 'Efeitos de iluminação'], ['settings', 'Ajustes']],
   mouse: [['dpi', 'DPI'], ['buttons', 'Atribuições de botão'], ['light', 'Efeitos de iluminação'], ['settings', 'Ajustes']],
 };
 
@@ -47,6 +48,8 @@ const DEVICES: DeviceId[] = ['keyboard', 'headset', 'mouse'];
 export default function App() {
   const [status, setStatus] = useState<Status | null>(null);
   const [lighting, setLighting] = useState<Lighting | null>(null);
+  /** The headset's own lighting in the profile in use; null = it follows the keyboard. */
+  const [headsetOwn, setHeadsetOwn] = useState<Lighting | null>(null);
   const [keymap, setKeymap] = useState<Record<string, number | null>>({});
   const [ledmap, setLedmap] = useState<Record<string, number | null>>({});
   const [page, setPage] = useState<Page>('home');
@@ -66,9 +69,10 @@ export default function App() {
   const updater = useUpdater();
 
   const loadProfileData = () =>
-    Promise.all([api.lighting(), api.bindings()]).then(([l, b]) => {
+    Promise.all([api.lighting(), api.bindings(), api.headsetLighting()]).then(([l, b, h]) => {
       setLighting(l);
       setBindings(b);
+      setHeadsetOwn(h);
       setLoadGen((g) => g + 1);
     });
 
@@ -329,7 +333,7 @@ export default function App() {
         <nav className="dev-strip" aria-label="Aparelhos">
           {strip.map((id) => (
             <button key={id} className={'strip-item ' + id + (id === device ? ' on' : '')} title={deviceName(id, status)} aria-current={id === device} onClick={() => openDevice(id)}>
-              <DeviceArt id={id} lighting={lighting} ledmap={ledmap} />
+              <DeviceArt id={id} lighting={lighting} headset={headsetOwn} ledmap={ledmap} />
             </button>
           ))}
         </nav>
@@ -359,7 +363,7 @@ export default function App() {
             {device === 'keyboard' ? (
               keyboardPage()
             ) : device === 'headset' ? (
-              <HeadsetPage key={loadGen} status={status} tab={devTab.headset} lighting={lighting} />
+              <HeadsetPage key={loadGen} status={status} tab={devTab.headset} lighting={lighting} own={headsetOwn} onOwn={setHeadsetOwn} />
             ) : (
               <MousePage key={loadGen} status={status} profiles={profiles?.profiles ?? []} tab={devTab.mouse} keyboard={lighting} />
             )}
@@ -421,11 +425,11 @@ export default function App() {
         ) : null}
 
         {page === 'home' ? (
-          <Home status={status} lighting={lighting} ledmap={ledmap} onScene={onScene} onOpen={openDevice} onScenes={() => setPage('scenes')} onDashboard={() => setPage('dashboard')} />
+          <Home status={status} lighting={lighting} headset={headsetOwn} ledmap={ledmap} onScene={onScene} onOpen={openDevice} onScenes={() => setPage('scenes')} onDashboard={() => setPage('dashboard')} />
         ) : page === 'dashboard' ? (
           <Dashboard />
         ) : page === 'scenes' ? (
-          <ScenesPage status={status} lighting={lighting} ledmap={ledmap} onScene={onScene} />
+          <ScenesPage status={status} lighting={lighting} headset={headsetOwn} ledmap={ledmap} onScene={onScene} />
         ) : page === 'device' ? (
           devicePage()
         ) : (
@@ -502,17 +506,26 @@ function GeneralSettings() {
   );
 }
 
-function HeadsetPage({ status, tab, lighting }: { status: Status | null; tab: HsTab; lighting: Lighting }) {
+function HeadsetPage({ status, tab, lighting, own, onOwn }: {
+  status: Status | null;
+  tab: HsTab;
+  /** The keyboard's lighting, which the logo shows while it follows the keyboard. */
+  lighting: Lighting;
+  own: Lighting | null;
+  onOwn: (l: Lighting | null) => void;
+}) {
   const hs = status?.headset;
   const pct = hs?.battery ?? null;
   const r = 70, c = 2 * Math.PI * r;
   return (
     <>
       <section className="stage art-stage">
-        <HeadsetArt lighting={lighting} />
+        <HeadsetArt lighting={own ?? lighting} />
       </section>
       {tab === 'eq' ? (
         <Equalizer />
+      ) : tab === 'light' ? (
+        <HeadsetLighting keyboard={lighting} onChange={onOwn} />
       ) : (
         <section className="headset">
           <div className="panel battery">

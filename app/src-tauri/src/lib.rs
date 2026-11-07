@@ -186,6 +186,7 @@ fn activate(app: &AppHandle, id: &str, auto_app: Option<String>) {
     let Some(p) = st.store.lock().unwrap().get(id).cloned() else { return };
     *st.active.lock().unwrap() = Active { id: p.id.clone(), auto_app };
     let _ = st.engine.send(Cmd::SetLighting(p.lighting.clone()));
+    let _ = st.engine.send(Cmd::SetHeadsetLighting(p.headset_lighting.clone()));
     let _ = st.engine.send(Cmd::SetBindings(to_slots(&p.bindings)));
     let _ = st.engine.send(Cmd::SetMouseBindings(to_mouse_bits(&p.mouse_bindings)));
     let _ = eq::apply(&p.eq);
@@ -212,6 +213,19 @@ fn get_lighting(state: State<AppState>) -> Lighting {
 fn set_lighting(state: State<AppState>, lighting: Lighting) -> Result<(), String> {
     let _ = state.engine.send(Cmd::SetLighting(lighting.clone()));
     state.edit_active(|p| p.lighting = lighting)
+}
+
+/// The headset's own lighting in the profile in effect (None = it follows the keyboard).
+#[tauri::command]
+fn get_headset_lighting(state: State<AppState>) -> Option<Lighting> {
+    let id = state.active_id();
+    state.store.lock().unwrap().get(&id).and_then(|p| p.headset_lighting.clone())
+}
+
+#[tauri::command]
+fn set_headset_lighting(state: State<AppState>, lighting: Option<Lighting>) -> Result<(), String> {
+    let _ = state.engine.send(Cmd::SetHeadsetLighting(lighting.clone()));
+    state.edit_active(|p| p.headset_lighting = lighting)
 }
 
 #[tauri::command]
@@ -647,6 +661,7 @@ pub fn run() {
             // mouse get the wrong polling rate, drop off the bus, and again for the right one.
             let mut initial = settings.commands();
             initial.push(Cmd::SetBindings(to_slots(&start.bindings)));
+            initial.push(Cmd::SetHeadsetLighting(start.headset_lighting.clone()));
             initial.push(Cmd::SetMouseBindings(to_mouse_bits(&start.mouse_bindings)));
 
             let status_handle = app.handle().clone();
@@ -777,6 +792,8 @@ pub fn run() {
             get_status,
             get_lighting,
             set_lighting,
+            get_headset_lighting,
+            set_headset_lighting,
             get_keymap,
             get_ledmap,
             set_geometry,

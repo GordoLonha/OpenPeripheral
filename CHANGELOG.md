@@ -17,6 +17,9 @@
 - **Cenas**: 12 animated scenes, including the new effects.
 - **Notifications**: the headset battery at 20% and 10%, and when it is full on the cable;
   a program switching the profile. Each can be turned off in Configurações → Geral.
+- **Headset lighting of its own**: per profile, the HS80 logo can follow the keyboard (as
+  before) or have its own effect, colours, brightness and speed (Headset → Efeitos de
+  iluminação). The mouse zones and the headset can also use Temperatura.
 
 ## 0.4.2 — 2026-10-31
 
