@@ -120,6 +120,8 @@ export type AppSettings = {
   memory_headset: boolean;
   /** Temperatures shown and logged in °F. */
   fahrenheit: boolean;
+  /** Physical layout of the K70 (drawing and key names). */
+  keyboard_layout: 'br' | 'us' | 'uk';
 };
 
 /** CSV sensor log: running or the last one, with its file. */

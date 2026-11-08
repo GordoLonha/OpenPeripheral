@@ -3,7 +3,7 @@
 // devices. Only loaded in dev builds when the Tauri runtime is absent.
 import { emit } from '@tauri-apps/api/event';
 import { mockIPC } from '@tauri-apps/api/mocks';
-import keymapBR from '../../layout/k70_mk2_lp_BR.json';
+import keymapBR from '../../layout/k70_mk2_lp.json';
 import type { AppSettings, Bindings, Eq, Lighting, Profiles, Reading, SensorLogState, Status } from './api';
 
 const keymap = keymapBR as Record<string, number | null>;
@@ -23,6 +23,7 @@ let settings: AppSettings = {
   memory_mouse: false,
   memory_headset: false,
   fahrenheit: false,
+  keyboard_layout: 'br',
   win_lock: false,
   lock_alt_tab: false,
   lock_alt_f4: false,

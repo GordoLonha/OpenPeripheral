@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, toHex, type AppSettings, type Bindings, type Lighting, type Profiles, type RGB, type Status } from './api';
 import { Keyboard, geometryFor } from './Keyboard';
+import { setKbLayout, type KbLayout } from './layout';
 import { Equalizer } from './Equalizer';
 import { KeyActions } from './KeyActions';
 import { HeadsetOptions, KeyboardOptions, MemoryNote } from './DeviceOptions';
@@ -52,6 +53,13 @@ export default function App() {
   const [headsetOwn, setHeadsetOwn] = useState<Lighting | null>(null);
   const [keymap, setKeymap] = useState<Record<string, number | null>>({});
   const [ledmap, setLedmap] = useState<Record<string, number | null>>({});
+  // Physical layout of the K70; kept here so the drawings re-render when it changes.
+  const [, setLayout] = useState<KbLayout>('br');
+  const changeLayout = (l: KbLayout) => {
+    setKbLayout(l);
+    setLayout(l);
+    api.setGeometry(geometryFor(ledmap));
+  };
   const [page, setPage] = useState<Page>('home');
   const [device, setDevice] = useState<DeviceId>('keyboard');
   const [devTab, setDevTab] = useState<DevTabs>({ keyboard: 'light', headset: 'eq', mouse: 'dpi' });
@@ -95,7 +103,10 @@ export default function App() {
       setProfiles(p);
     });
     api.keymap().then(setKeymap);
-    api.ledmap().then((m) => {
+    // The drawing (and the key places the effects use) follow the chosen layout.
+    Promise.all([api.ledmap(), api.appSettings()]).then(([m, s]) => {
+      setKbLayout(s.keyboard_layout);
+      setLayout(s.keyboard_layout);
       setLedmap(m);
       api.setGeometry(geometryFor(m));
     });
@@ -173,7 +184,7 @@ export default function App() {
 
   const keyboardPage = () => {
     const tab = devTab.keyboard;
-    if (tab === 'settings') return <KeyboardOptions status={status} />;
+    if (tab === 'settings') return <KeyboardOptions status={status} onLayout={changeLayout} />;
     if (tab === 'keys')
       return (
         <>

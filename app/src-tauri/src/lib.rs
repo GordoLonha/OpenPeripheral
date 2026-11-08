@@ -33,7 +33,8 @@ use profiles::{Overview, ProfileInfo, Store};
 
 /// Key name -> key index (report 0x03 bit), measured with `opctl k70 map` on an
 /// ABNT2 K70 MK.2 LP. LED slots differ: see `get_ledmap`.
-const KEYMAP_BR: &str = include_str!("../../../layout/k70_mk2_lp_BR.json");
+/// K70 key name -> key index, every layout (BR, US, UK share one key matrix).
+const KEYMAP: &str = include_str!("../../../layout/k70_mk2_lp.json");
 
 struct Active {
     /// Profile in effect (selected, or the one an app switched to).
@@ -89,6 +90,14 @@ struct AppSettings {
     /// Temperatures shown (and logged) in °F.
     #[serde(default)]
     fahrenheit: bool,
+    /// Physical layout of the K70: "br" (ABNT2), "us" or "uk". Only the page uses it
+    /// (drawing, key names); key indices are the same on every layout.
+    #[serde(default = "br")]
+    keyboard_layout: String,
+}
+
+fn br() -> String {
+    "br".into()
 }
 
 fn two() -> u8 {
@@ -582,7 +591,7 @@ fn get_status(state: State<AppState>) -> Status {
 
 #[tauri::command]
 fn get_keymap() -> HashMap<String, Option<u16>> {
-    serde_json::from_str(KEYMAP_BR).unwrap_or_default()
+    serde_json::from_str(KEYMAP).unwrap_or_default()
 }
 
 /// Key name -> LED slot, for painting and spatial effects.
