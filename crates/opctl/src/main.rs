@@ -118,6 +118,11 @@ enum K70Cmd {
         #[arg(num_args = 0..)]
         keys: Vec<String>,
     },
+    /// Send one command on the command collection: `send 07 05 02 00 01`.
+    Send {
+        #[arg(value_parser = parse_u8, num_args = 1..)]
+        bytes: Vec<u8>,
+    },
     /// Read a property (`0E prop`) and print the reply: `read 0x0a`.
     Read {
         #[arg(value_parser = parse_u8)]
@@ -382,6 +387,7 @@ fn run(api: &HidApi, cmd: Cmd) -> op_core::Result<()> {
                     kb.set_lock(lock)?;
                     println!("lock byte {:#04x}", lock.byte());
                 }
+                K70Cmd::Send { bytes } => kb.send_raw(&bytes)?,
                 K70Cmd::Read { prop } => println!("{}", hs80::hex(&kb.read_property(prop)?[..24])),
                 K70Cmd::Keymode { key, mode } => kb.set_key_mode(key, mode)?,
                 K70Cmd::Polling { ms } => kb.set_polling_ms(ms)?,

@@ -35,6 +35,13 @@ The app now quits cleanly on SIGTERM/SIGINT/SIGHUP.
 | every ~14 ms | `7F 01 3C 00` + 60 B, `7F 02 3C 00` + 60 B, `7F 03 30 00` + 48 B, `07 28 ch 03 fin` | one colour plane; ch 1=R 2=G 3=B, fin `01`, last plane `02` |
 | iCUE quit | `07 04 01` | back to **hardware mode** → onboard rainbow returns |
 
+### Last byte of `07 05 02 00 xx` ✅ 2026-11-07
+Tested in software mode with the app streaming frames (`opctl k70 send 07 05 02 00 xx`,
+fw 3.24): `00` turns the keys off, `01`, `02` and `03` all give full brightness. So it is not
+a brightness level; the app keeps sending `03`. The four brightness steps of the keyboard's
+own key stay a firmware action (hardware mode, mode `C1`); in software mode the app dims the
+frame itself.
+
 ### Firmware reply (`0E 01`) ✅
 `0e 01 00 00 01 01 00 01 | 24 03 | 03 03 | 1c 1b | 55 1b | 01 01 00 01 c0 ff 40 02 …`
 | off | len | meaning |
